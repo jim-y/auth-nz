@@ -46,7 +46,7 @@ export const TOKEN_REQUEST = {
       PARAMETERS.REDIRECT_URI,
       PARAMETERS.CLIENT_ID,
       PARAMETERS.CODE_VERIFIER,
-      PARAMETERS.SCOPE
+      PARAMETERS.SCOPE,
     ],
   },
   // TODO allow this grant only for confidential clients

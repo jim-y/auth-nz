@@ -18,7 +18,7 @@ import {
   AuthorizationRequestMeta,
   AccessToken,
   TokenRequestMeta,
-} from 'auth-nz'; // import { OauthProvider } from 'authnz-provider';
+} from 'auth-nz';
 
 const app = express();
 const port = 3000;

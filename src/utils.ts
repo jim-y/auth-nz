@@ -1,9 +1,12 @@
 import { FindClientFunction, FindAuthorizationCodeFunction } from './types';
 
 // Credit: https://hisk.io/javascript-snake-to-camel/
-export const snakeCaseToCamelCase = (str) =>
-  str.replace(/([-_][a-z])/g, (group) =>
-    group.toUpperCase().replace('-', '').replace('_', '')
+export const snakeCaseToCamelCase = str =>
+  str.replace(/([-_][a-z])/g, group =>
+    group
+      .toUpperCase()
+      .replace('-', '')
+      .replace('_', '')
   );
 
 export const getFindClientFn = (
