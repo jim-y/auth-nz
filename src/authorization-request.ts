@@ -88,7 +88,7 @@ export const getValidateAuthorizationRequestMiddleware = (
   } as ClientValidationMeta);
 
   // 9) Error handling short circuit
-  return res.redirect(`${client.redirectUri}?${stringify({})}`);
+  // return res.redirect(`${client.redirectUri}?${stringify({})}`);
 
   req.session.authorizationServer = {
     ...authorizationRequestMeta,
