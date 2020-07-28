@@ -1,3 +1,4 @@
+import { stringify } from 'querystring';
 import { PARAMETERS, AUTHORIZATION_REQUEST_GRANTS } from './constants';
 import {
   AUTHORIZATION_REQUEST_RESPONSE_TYPE,
@@ -6,66 +7,53 @@ import {
   AuthorizationRequestMeta,
   ClientValidationMeta,
   AuthorizationRequestMetaBase,
+  AuthorizationServerOptions,
 } from './types';
 import { snakeCaseToCamelCase } from './utils';
-import { validateClient } from './atoms';
+import {
+  validateClient,
+  validateURIForFragment,
+  validateURIForTLS,
+  validateURIHttpMethod,
+  validateQueryParams,
+} from './atoms';
 
 export const getValidateAuthorizationRequestMiddleware = (
-  findClientFn: FindClientFunction
-) => async (req, _res, next) => {
-  console.log('validateAuthorizationRequest', req.query);
-
+  findClientFn: FindClientFunction,
+  options: AuthorizationServerOptions
+) => async (req, res, next) => {
+  const urlString = `${req.protocol}://${req.host}${
+    req.originalUrl ? `/${req.originalUrl}` : ''
+  }`;
   // 1) the authorization request URI MUST NOT include a fragment component
-  const url = /* koa, express */ new URL(
-    `${req.protocol}://${req.host}${
-      req.originalUrl ? `/${req.originalUrl}` : ''
-    }`
-  );
-  if (url.hash != null && url.hash !== '') {
-    throw new Error('The request must not contain an URI fragment');
-  }
-
+  validateURIForFragment(urlString);
   // 2) require TLS
-  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https') {
-    throw new Error('The request must use TLS');
+  if (!options.development) {
+    validateURIForTLS(urlString);
   }
-
   // 3) must support GET may support POST
-  if (
-    req.method.toLowerCase() !== 'get' &&
-    req.method.toLowerCase() !== 'post'
-  ) {
-    throw new Error('Unsupported method type. Only GET and POST are allowed');
-  }
+  validateURIHttpMethod(urlString);
 
-  // 4) params MUST NOT be included more than once
-  // koa and express removes the duplicates
-  const paramKeys = Object.keys(req.query);
-  const uniqueParamKeys = new Set(paramKeys);
-  if (paramKeys.length !== uniqueParamKeys.size) {
-    throw new Error('Every parameter must appear only once');
-  }
-  // it is also possible that koa,express will create an array of values when parsing the qs
-  // E.g from express docs : GET /shoes?color[]=blue&color[]=black&color[]=red
-  // console.dir(req.query.color) => [blue, black, red]
-  if (Object.values(req.query).some(val => Array.isArray(val))) {
-    throw new Error('Every parameter must appear only once');
-  }
-
-  // 5) response_type is mandatory
+  // 4) response_type is mandatory
   const responseType: AUTHORIZATION_REQUEST_RESPONSE_TYPE =
     req.query[PARAMETERS.RESPONSE_TYPE];
   if (responseType == null) {
     throw new Error('response_type parameter is required');
   }
 
-  // 6) finding out the grant type
+  // 5) finding out the grant type
   const grant = AUTHORIZATION_REQUEST_GRANTS[responseType];
   if (grant == null) {
     throw new Error(
       'Unsupported grant type. response_type must be either "code" or "token".'
     );
   }
+
+  const allowedParams = [...grant.mandatoryParams, ...grant.optionalParams];
+
+  // 6) params MUST NOT be included more than once
+  // koa and express removes the duplicates
+  validateQueryParams(req.query, allowedParams);
 
   // 7) Checking mandatory params
   for (const mandatoryParam of grant.mandatoryParams) {
@@ -78,7 +66,7 @@ export const getValidateAuthorizationRequestMiddleware = (
 
   // Building the meta object
   const authorizationRequestMeta = {} as AuthorizationRequestMetaBase;
-  const allowedParams = [...grant.mandatoryParams, ...grant.optionalParams];
+
   for (const param of allowedParams) {
     if (req.query[param] != null) {
       authorizationRequestMeta[snakeCaseToCamelCase(param)] = req.query[param];
@@ -98,6 +86,9 @@ export const getValidateAuthorizationRequestMiddleware = (
     clientId: authorizationRequestMeta.clientId,
     redirectUri: authorizationRequestMeta.redirectUri,
   } as ClientValidationMeta);
+
+  // 9) Error handling short circuit
+  return res.redirect(`${client.redirectUri}?${stringify({})}`);
 
   req.session.authorizationServer = {
     ...authorizationRequestMeta,

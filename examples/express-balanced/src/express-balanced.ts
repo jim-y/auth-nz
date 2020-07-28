@@ -57,6 +57,7 @@ const as = createServer({
       (record: AuthorizationCode) => record.code === code
     ),
   revokeAccessTokens: () => {},
+  development: process.env.NODE_ENV !== 'production'
 } as AuthorizationServerOptions);
 
 // handlebars view engine

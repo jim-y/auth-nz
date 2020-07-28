@@ -16,6 +16,7 @@ export interface AuthorizationServerOptions {
   findClient: FindClientFunction;
   findAuthorizationCode: FindAuthorizationCodeFunction;
   revokeAccessTokens: RevokeAccessTokensFunction;
+  development: boolean;
 }
 
 export interface AuthorizationServer {
@@ -107,6 +108,7 @@ export interface AuthorizationRequestMeta extends RequestMetaBase {
   clientId: Client['clientId']; // REQUIRED
   codeChallenge?: string; // OPTIONAL -> PKCE
   codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE; // OPTIONAL -> PKCE
+  errors: any[];
 }
 
 export type AuthorizationRequestMetaBase = Omit<

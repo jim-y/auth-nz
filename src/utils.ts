@@ -32,3 +32,42 @@ export const getFindAuthorizationCodeFn = (
   }
   return findAuthorizationCodeFn ?? findAuthorizationCode;
 };
+
+// Based on my own kata @codewars
+// @see https://www.codewars.com/kata/541a077539c5ef3fd8001133
+export const typer = (function(toString) {
+  return {
+    isString: function(obj) {
+      return toString.call(obj) === '[object String]';
+    },
+    isFunction: function(obj) {
+      return toString.call(obj) === '[object Function]';
+    },
+    isDate: function(obj) {
+      return toString.call(obj) === '[object Date]';
+    },
+    isRegExp: function(obj) {
+      return toString.call(obj) === '[object RegExp]';
+    },
+    isBoolean: function(obj) {
+      return toString.call(obj) === '[object Boolean]';
+    },
+    isError: function(obj) {
+      return toString.call(obj) === '[object Error]';
+    },
+    isNumber: function(obj) {
+      return toString.call(obj) === '[object Number]' && !isNaN(obj);
+    },
+    isArray: function(obj) {
+      return Array.isArray
+        ? Array.isArray(obj)
+        : toString.call(obj) === '[object Array]';
+    },
+    isNull: function(obj) {
+      return obj === null;
+    },
+    isUndefined: function(obj) {
+      return obj === void 0;
+    },
+  };
+})(Object.prototype.toString);
