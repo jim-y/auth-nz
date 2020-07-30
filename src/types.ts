@@ -13,10 +13,10 @@ interface AsyncConnectTypeMiddleware {
  */
 
 export interface AuthorizationServerOptions {
-  findClient: FindClientFunction;
-  findAuthorizationCode: FindAuthorizationCodeFunction;
-  revokeAccessTokens: RevokeAccessTokensFunction;
-  development: boolean;
+  findClient?: FindClientFunction;
+  findAuthorizationCode?: FindAuthorizationCodeFunction;
+  revokeAccessTokens?: RevokeAccessTokensFunction;
+  development?: boolean;
 }
 
 export interface AuthorizationServer {
@@ -51,7 +51,7 @@ export interface RevokeAccessTokensFunction {
 }
 
 export interface ValidateClientFunction {
-  (client: Client, meta: Partial<ClientValidationMeta>): void;
+  (client: Client, meta: Partial<ClientValidationMeta>): ErrorDTO | void;
 }
 
 export interface OnDecisionCb {
@@ -90,6 +90,30 @@ export interface AccessToken {
   token: string;
   expiresAt: number;
   ttl: number;
+}
+
+/**
+ * ERRORS
+ */
+
+export type ERROR_CODE =
+  | 'invalid_request'
+  | 'unauthorized_client'
+  | 'access_denied'
+  | 'unsupported_response_type'
+  | 'invalid_scope'
+  | 'server_error'
+  | 'temporarily_unavailable';
+
+export interface ErrorDTO {
+  error: ERROR_CODE;
+  error_description?: string;
+  error_uri?: string;
+  state?: string;
+}
+
+export interface AuthorizationRequestErrorMeta {
+  error: ErrorDTO;
 }
 
 /**

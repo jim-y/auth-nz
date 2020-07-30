@@ -2,6 +2,8 @@
  * TODO: add i18n support
  */
 
+import { ERROR_CODE } from './types';
+
 export const ERROR_CODES = {
   // The request is missing a required parameter, includes an invalid parameter
   // value, includes a parameter more than once, or is otherwise malformed
@@ -31,8 +33,9 @@ export const ERROR_CODES = {
 };
 
 export class AuthnzError extends Error {
+  code: ERROR_CODE;
   type = 'auth-nz';
-  constructor() {
+  constructor(public description?: string) {
     super();
     // Set the prototype explicitly.
     // @see https://github.com/Microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work
@@ -41,57 +44,57 @@ export class AuthnzError extends Error {
 }
 
 export class InvalidRequestError extends AuthnzError {
-  code = ERROR_CODES.invalid_request;
-  constructor() {
-    super();
+  code = ERROR_CODES.invalid_request as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, InvalidRequestError.prototype);
   }
 }
 
 export class UnauthorizedClientError extends AuthnzError {
-  code = ERROR_CODES.unauthorized_client;
-  constructor() {
-    super();
+  code = ERROR_CODES.unauthorized_client as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, UnauthorizedClientError.prototype);
   }
 }
 
 export class AccessDeniedError extends AuthnzError {
-  code = ERROR_CODES.access_denied;
-  constructor() {
-    super();
+  code = ERROR_CODES.access_denied as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, AccessDeniedError.prototype);
   }
 }
 
 export class UnsupportedResponseTypeError extends AuthnzError {
-  code = ERROR_CODES.unsupported_response_type;
-  constructor() {
-    super();
+  code = ERROR_CODES.unsupported_response_type as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, UnsupportedResponseTypeError.prototype);
   }
 }
 
 export class InvalidScopeError extends AuthnzError {
-  code = ERROR_CODES.invalid_scope;
-  constructor() {
-    super();
+  code = ERROR_CODES.invalid_scope as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, InvalidScopeError.prototype);
   }
 }
 
 export class AuthorizationServerError extends AuthnzError {
-  code = ERROR_CODES.server_error;
-  constructor() {
-    super();
+  code = ERROR_CODES.server_error as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, AuthorizationServerError.prototype);
   }
 }
 
 export class TemporarilyUnavailableError extends AuthnzError {
-  code = ERROR_CODES.temporarily_unavailable;
-  constructor() {
-    super();
+  code = ERROR_CODES.temporarily_unavailable as ERROR_CODE;
+  constructor(d?: string) {
+    super(d);
     Object.setPrototypeOf(this, TemporarilyUnavailableError.prototype);
   }
 }

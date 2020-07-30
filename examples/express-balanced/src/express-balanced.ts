@@ -56,8 +56,7 @@ const as = createServer({
     cache.authorizationCodes.find(
       (record: AuthorizationCode) => record.code === code
     ),
-  revokeAccessTokens: () => {},
-  development: process.env.NODE_ENV !== 'production'
+  development: process.env.NODE_ENV !== 'production',
 } as AuthorizationServerOptions);
 
 // handlebars view engine
@@ -125,6 +124,7 @@ app.get(
   (req, res) => {
     res.locals = {
       title: 'Dialog',
+      error: (req as any).session?.authorizationServer?.error,
     };
     res.render('dialog');
   }

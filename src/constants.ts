@@ -25,12 +25,6 @@ export const AUTHORIZATION_REQUEST_GRANTS = {
       PARAMETERS.CODE_CHALLENGE_METHOD,
     ],
   },
-  token: {
-    type: 'implicit',
-    responseType: 'token',
-    mandatoryParams: [],
-    optionalParams: [],
-  },
 };
 
 export const TOKEN_REQUEST_GRANT_TYPES = {
@@ -58,6 +52,7 @@ export const TOKEN_REQUEST = {
 };
 
 export const CODE_CHALLENGE_METHOD_TYPES = {
+  s256: 's256',
   sha256: 'sha256',
   plain: 'plain',
 };
