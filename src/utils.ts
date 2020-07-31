@@ -1,4 +1,8 @@
-import { FindClientFunction, FindAuthorizationCodeFunction } from './types';
+import {
+  FindClientFunction,
+  FindAuthorizationCodeFunction,
+  Request,
+} from './types';
 
 // Credit: https://hisk.io/javascript-snake-to-camel/
 export const snakeCaseToCamelCase = str =>
@@ -71,3 +75,15 @@ export const typer = (function(toString) {
     },
   };
 })(Object.prototype.toString);
+
+export const getRequest = (req): Request => {
+  // express
+  return {
+    query: req.query,
+    uri: `${req.protocol}://${req.host}${
+      req.originalUrl ? `/${req.originalUrl}` : ''
+    }`,
+    method: req.method,
+  } as Request;
+  // koa - tbd
+};

@@ -12,7 +12,7 @@ import {
   FindAuthorizationCodeFunction,
   AuthorizationServer,
 } from './types';
-import { getValidateAuthorizationRequestMiddleware } from './authorization-request';
+import { getAuthorizationRequestMiddleware } from './authorization-request';
 import { getValidateTokenRequestMiddleware } from './token-request';
 
 const BASE_SERVER_OPTIONS = {
@@ -37,26 +37,30 @@ export const createServer = (
      * - params MUST NOT be included more than once
      */
     validateAuthorizationRequest(findClientFn?: FindClientFunction) {
-      // Get a FindClientFunction, either from params or from AuthorizationServerOptions or throw if none
+
+      // Get a FindClientFunction, either from params or from
+      // AuthorizationServerOptions or throw if none
       findClientFn = getFindClientFn(
         findClientFn,
         options.findClient
       ) as FindClientFunction;
 
-      return getValidateAuthorizationRequestMiddleware(findClientFn, options);
+      return getAuthorizationRequestMiddleware(findClientFn, options);
     },
 
     validateTokenRequest(
       findClientFn?: FindClientFunction,
       findAuthorizationCodeFn?: FindAuthorizationCodeFunction
     ) {
-      // Get a FindClientFunction, either from params or from AuthorizationServerOptions or throw if none
+      // Get a FindClientFunction, either from params or from
+      // AuthorizationServerOptions or throw if none
       findClientFn = getFindClientFn(
         findClientFn,
         options.findClient
       ) as FindClientFunction;
 
-      // Get a FindAuthorizationCodeFunction, either from params or from AuthorizationServerOptions or throw if none
+      // Get a FindAuthorizationCodeFunction, either from params or from
+      // AuthorizationServerOptions or throw if none
       findAuthorizationCodeFn = getFindAuthorizationCodeFn(
         findAuthorizationCodeFn,
         options.findAuthorizationCode

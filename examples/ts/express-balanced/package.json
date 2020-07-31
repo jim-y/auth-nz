@@ -1,13 +1,13 @@
 {
-  "name": "examples",
+  "name": "express-balanced-ts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node dist/express-balanced.js",
     "build": "tsc",
-    "copy-css": "cpx './public/**' './dist/examples/public'",
-    "copy-views": "cpx './views/**' './dist/examples/views'",
+    "copy-css": "cpx './public/**' './dist/public'",
+    "copy-views": "cpx './views/**' './dist/views'",
     "copy-static-assets": "npm run copy-css && npm run copy-views",
     "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -15,7 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "auth-nz": "file:../..",
+    "auth-nz": "file:../../..",
     "express": "^4.17.1",
     "express-bearer-token": "^2.4.0",
     "express-session": "^1.17.1",

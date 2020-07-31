@@ -45,26 +45,29 @@ const cache: IMockCache = {
   accessTokens: [],
 };
 
-const as = createServer({
-  // The validateAuthorizationRequest middleware requires a callback to return a Promise
-  // with a Client. If the Promise fulfills with a Client the middleware can validate the client.
-  // Otherwise, if the Promise rejects or returns with null an error is raised
-  // You can provide this function as a parameter for the middleware too
+const as: AuthorizationServer = createServer({
+  // The validateAuthorizationRequest middleware requires a callback to return a
+  // Promise with a Client. If the Promise fulfills with a Client the middleware
+  // can validate the client. Otherwise, if the Promise rejects or returns with
+  // null an error is raised You can provide this function as a parameter for
+  // the middleware too
   findClient: async clientId =>
     cache.clients.find((record: Client) => record.clientId === clientId),
+
   findAuthorizationCode: async code =>
     cache.authorizationCodes.find(
       (record: AuthorizationCode) => record.code === code
     ),
+
   development: process.env.NODE_ENV !== 'production',
 } as AuthorizationServerOptions);
 
 // handlebars view engine
-hbs.registerPartials(path.join(__dirname, '../views/partials'));
+hbs.registerPartials(path.join(__dirname, 'views/partials'));
 app.set('view engine', 'hbs');
-app.set('views', path.join(__dirname, '../views'));
+app.set('views', path.join(__dirname, 'views'));
 
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,10 +85,11 @@ app.use(
  * ===========================
  */
 
-// 4) It's up to you how you authenticate your users. Here, we say a user is already authenticated
-//    if the session has a user object in which case we can call the next middleware
-//    If a user is not authenticated redirect her UA to a login form. Before the redirect, save the
-//    original url for a later redirect -> we really just need the querystring but it's easier like this
+// 4) It's up to you how you authenticate your users. Here, we say a user is
+//    already authenticated if the session has a user object in which case we
+//    can call the next middleware. If a user is not authenticated redirect her
+//    UA to a login form. Before the redirect, save the original url for a later
+//    redirect -> we really just need the querystring but it's easier like this
 const ensureLogin = (req, res, next) => {
   if (req.session.user) {
     return next();
@@ -101,8 +105,8 @@ const ensureLogin = (req, res, next) => {
  */
 
 app.get(
-  // 1) The Client will start the OAuth -authorization code- flow by calling this endpoint
-  //    with the following querystring parameters
+  // 1) The Client will start the OAuth -authorization code- flow by calling
+  //    this endpoint with the following querystring parameters
   //      - response_type REQUIRED
   //      - client_id REQUIRED
   //      - redirect_uri OPTIONAL

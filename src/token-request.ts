@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import {
   TOKEN_REQUEST_GRANT_TYPE,
   TokenRequestMetaBase,
@@ -17,8 +18,7 @@ import {
 } from './constants';
 import { snakeCaseToCamelCase } from './utils';
 import { BasicAuth, authenticateClient } from './client-auth';
-import { createHash } from 'crypto';
-import { validateClient } from './atoms';
+import { validateClient } from './shared';
 
 export const getValidateTokenRequestMiddleware = (
   findClientFn: FindClientFunction,

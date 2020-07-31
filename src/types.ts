@@ -92,6 +92,16 @@ export interface AccessToken {
   ttl: number;
 }
 
+export interface Query {
+  [param: string]: string | string[];
+}
+
+export interface Request {
+  query: Query;
+  uri: string;
+  method: string; // DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
+}
+
 /**
  * ERRORS
  */
