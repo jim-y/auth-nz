@@ -1,5 +1,3 @@
-declare var __DEV__: boolean;
-
 import { stringify, parse } from 'querystring';
 import {
   PARAMETERS,
@@ -26,6 +24,8 @@ import {
   AuthnzError,
 } from './errors';
 import { validateClient } from './shared';
+
+declare var __DEV__: boolean;
 
 /**
  * ------------------

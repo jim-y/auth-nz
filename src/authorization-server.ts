@@ -37,7 +37,6 @@ export const createServer = (
      * - params MUST NOT be included more than once
      */
     validateAuthorizationRequest(findClientFn?: FindClientFunction) {
-
       // Get a FindClientFunction, either from params or from
       // AuthorizationServerOptions or throw if none
       findClientFn = getFindClientFn(
