@@ -17,3 +17,5 @@ export const AuthorizationRequest = {
   sanitizeQueryParams,
   authorizeRequest,
 };
+
+export { getRequest } from './utils';

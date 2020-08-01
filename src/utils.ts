@@ -77,7 +77,7 @@ export const typer = (function(toString) {
 })(Object.prototype.toString);
 
 export const getRequest = (req): Request => {
-  // express
+  // express, nest
   return {
     query: req.query,
     uri: `${req.protocol}://${req.host}${
