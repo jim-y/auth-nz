@@ -32,6 +32,25 @@ export const ERROR_CODES = {
   temporarily_unavailable: 'temporarily_unavailable',
 };
 
+export const ERROR_DESCRIPTIONS = {
+  missing_client_id: 'client_id missing',
+  invalid_client: 'invalid client',
+  unregistered_client: 'unregistered client',
+  invalid_client_id: 'invalid client_id',
+  invalid_redirect_uri: 'invalid redirect_uri',
+  missing_redirect_uri: 'missing redirection_uri',
+  invalid_client_secret: 'invalid client_secret',
+  malformed_url: 'malformed url',
+  url_fragment: 'the request must not contain a url fragment',
+  missing_tls: 'must use TLS',
+  invalid_http_method:
+    'for the authorization request only http get and post methods are supported',
+  missing_response_type: 'the "response_type" parameter is mandatory',
+  unsupported_response_type: 'unsupported response_type',
+  duplicate_query_parameter: 'duplicated query parameter',
+  invalid_code_challenge_method: 'pkce code_challenge_method transform algorithm not supported'
+};
+
 export class AuthnzError extends Error {
   code: ERROR_CODE;
   type = 'auth-nz';

@@ -39,11 +39,11 @@ export interface AuthorizationServer {
  */
 
 export interface FindClientFunction {
-  (clientId: Client['clientId'], req: any): Promise<Client>;
+  (clientId: Client['clientId'], req: Request): Promise<Client>;
 }
 
 export interface FindAuthorizationCodeFunction {
-  (code: AuthorizationCode['code'], req: any): Promise<AuthorizationCode>;
+  (code: AuthorizationCode['code'], req: Request): Promise<AuthorizationCode>;
 }
 
 export interface RevokeAccessTokensFunction {
@@ -133,21 +133,25 @@ export interface AuthorizationRequestErrorMeta {
 export interface RequestMetaBase {
   client: Client;
   scope?: string; // OPTIONAL
-  state?: string; // OPTIONAL
+  state?: string; // OPTIONAL / RECOMMENDED
   redirectUri?: Client['redirectUri']; // OPTIONAL
 }
 
 export interface AuthorizationRequestMeta extends RequestMetaBase {
   responseType: AUTHORIZATION_REQUEST_RESPONSE_TYPE; // REQUIRED
   clientId: Client['clientId']; // REQUIRED
-  codeChallenge?: string; // OPTIONAL -> PKCE
-  codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE; // OPTIONAL -> PKCE
-  errors: any[];
+
+  codeChallenge?: string; // OPTIONAL / RECOMMENDED
+  codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE; // OPTIONAL / RECOMMENDED
+
+  // Errors
+  clientError?: ErrorDTO;
+  error?: ErrorDTO;
 }
 
 export type AuthorizationRequestMetaBase = Omit<
   AuthorizationRequestMeta,
-  'client'
+  'client' | 'clientError' | 'error'
 >;
 
 export interface TokenRequestMeta extends RequestMetaBase {

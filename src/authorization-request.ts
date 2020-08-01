@@ -16,12 +16,14 @@ import {
   AuthorizationRequestErrorMeta,
   ERROR_CODE,
   Request,
+  Query,
 } from './types';
 import { snakeCaseToCamelCase, typer, getRequest } from './utils';
 import {
   AuthorizationRequest as AuthorizationRequestErrors,
   ERROR_CODES,
   AuthnzError,
+  ERROR_DESCRIPTIONS,
 } from './errors';
 import { validateClient } from './shared';
 
@@ -43,12 +45,14 @@ export const validateURIForFragment = (uri: string) => {
   try {
     url = new URL(uri);
   } catch (error) {
-    throw new AuthorizationRequestErrors.InvalidRequestError('malformed url');
+    throw new AuthorizationRequestErrors.InvalidRequestError(
+      ERROR_DESCRIPTIONS.malformed_url
+    );
   }
 
   if (url.hash != null && url.hash !== '') {
     throw new AuthorizationRequestErrors.InvalidRequestError(
-      'the request must not contain a url fragment'
+      ERROR_DESCRIPTIONS.url_fragment
     );
   }
 };
@@ -63,11 +67,15 @@ export const validateURIForTLS = (uri: string) => {
   try {
     url = new URL(uri);
   } catch (error) {
-    throw new AuthorizationRequestErrors.InvalidRequestError('malformed url');
+    throw new AuthorizationRequestErrors.InvalidRequestError(
+      ERROR_DESCRIPTIONS.malformed_url
+    );
   }
 
   if (url.protocol !== 'https:') {
-    throw new AuthorizationRequestErrors.InvalidRequestError('must use TLS');
+    throw new AuthorizationRequestErrors.InvalidRequestError(
+      ERROR_DESCRIPTIONS.missing_tls
+    );
   }
 };
 
@@ -81,7 +89,7 @@ export const validateURIHttpMethod = (method: string) => {
     (method?.toLowerCase() !== 'get' && method?.toLowerCase() !== 'post')
   ) {
     throw new AuthorizationRequestErrors.InvalidRequestError(
-      'only http get and post are supported'
+      ERROR_DESCRIPTIONS.invalid_http_method
     );
   }
 };
@@ -136,7 +144,23 @@ export const validateQueryParams = (
     Object.values(query).some(val => Array.isArray(val))
   ) {
     throw new AuthorizationRequestErrors.InvalidRequestError(
-      'duplicated query parameter'
+      ERROR_DESCRIPTIONS.duplicate_query_parameter
+    );
+  }
+};
+
+export const validateMultipleRedirectUriParams = (query: Query) => {
+  const redirectUriValue = query[PARAMETERS.REDIRECT_URI];
+  const numOfRedirectUriParams = Object.keys(query).filter(
+    key => key === PARAMETERS.REDIRECT_URI
+  ).length;
+
+  if (
+    numOfRedirectUriParams > 1 ||
+    (Array.isArray(redirectUriValue) && redirectUriValue.length > 1)
+  ) {
+    throw new AuthorizationRequestErrors.InvalidRequestError(
+      ERROR_DESCRIPTIONS.duplicate_query_parameter
     );
   }
 };
@@ -166,43 +190,58 @@ export const validateParamValue = <T>(
  * Accepts {Request} which can be derived from an arbitrary req object
  * Requires a {findClientFn} to be able to find a Client
  * Returns either
+ *
  * { clientError }: raised when you must not redirect to redirect_uri but you
  *                  should show some error to end_user
- * { error }: a validation error happened, the request is malformed or
- *            otherwise corrupted. You should redirect to redirect_uri
- *            with the error
- * { authorizationRequestMeta }: there was no error while validating the request
+ *
+ * { error, client }: a validation error happened, the request is malformed or
+ *                    otherwise corrupted. You should redirect to redirect_uri
+ *                    with the error
+ *
+ * { authorizationRequestMeta, client }:  there was no error while validating
+ *                                        the request
  */
 export const authorizeRequest = async (
   req: Request,
   findClientFn: FindClientFunction,
   options?: Pick<AuthorizationServerOptions, 'development'>
-): Promise<Partial<{
-  clientError: ErrorDTO;
-  authorizationRequestMeta: Omit<AuthorizationRequestMeta, 'client'>;
-  error: ErrorDTO;
-  client: Client;
-}>> => {
+): Promise<Partial<AuthorizationRequestMeta>> => {
   // Find & Validate Client. We must do this first, so that if any error happens
   // later we can decide whether we can redirect with the error or show an error
   // screen to the user
   let client: Client;
-  let errorDto: ErrorDTO | void;
 
-  // TODO: what if clientId/redirectUri is an array
-  const clientId: Client['clientId'] = req.query[
-    PARAMETERS.CLIENT_ID
-  ] as string;
-  const redirectUri: Client['redirectUri'] = req.query[
-    PARAMETERS.REDIRECT_URI
-  ] as string;
-  const state: string = req.query[PARAMETERS.STATE] as string;
+  const clientId: Client['clientId'] | undefined = _getSingleValue<
+    Client['clientId']
+  >(req.query[PARAMETERS.CLIENT_ID]);
+
+  const redirectUri: Client['redirectUri'] | undefined = _getSingleValue<
+    Client['redirectUri']
+  >(req.query[PARAMETERS.REDIRECT_URI]);
+
+  const state: string | undefined = _getSingleValue<string>(
+    req.query[PARAMETERS.STATE]
+  );
+
+  // We need to do an excess check here to overcome open redirector attacks
+  // It is possible for a hacker to tamper the request and add an additional
+  // redirect_uri parameter at the end of the qs hoping that we will redirect
+  // the code to that uri. In this case we must not redirect but raise a
+  // clientError. We will do duplicate checks for other params too, later..
+  try {
+    validateMultipleRedirectUriParams(req.query);
+  } catch (error) {
+    const err: ErrorDTO = _getErrorDtoFromError(error);
+    return {
+      clientError: _onClientError(err),
+    };
+  }
 
   if (!clientId) {
     return {
       clientError: _onClientError({
         error: ERROR_CODES.invalid_request as ERROR_CODE,
-        error_description: 'client_id missing',
+        error_description: ERROR_DESCRIPTIONS.missing_client_id,
         state,
       }),
     };
@@ -214,20 +253,20 @@ export const authorizeRequest = async (
     return {
       clientError: _onClientError({
         error: ERROR_CODES.unauthorized_client as ERROR_CODE,
-        error_description: 'invalid client',
+        error_description: ERROR_DESCRIPTIONS.invalid_client,
         state,
       }),
     };
   }
 
-  errorDto = validateClient(client, {
+  const clientValidationError: ErrorDTO | void = validateClient(client, {
     clientId,
     redirectUri,
   } as ClientValidationMeta);
 
-  if (errorDto) {
+  if (clientValidationError) {
     return {
-      clientError: _onClientError({ ...errorDto, state }),
+      clientError: _onClientError({ ...clientValidationError, state }),
     };
   }
 
@@ -239,6 +278,7 @@ export const authorizeRequest = async (
     if (!options?.development) {
       validateURIForTLS(req.uri);
     }
+
     // must support GET, may support POST
     validateURIHttpMethod(req.method);
 
@@ -248,7 +288,7 @@ export const authorizeRequest = async (
     ] as AUTHORIZATION_REQUEST_RESPONSE_TYPE;
     if (responseType == null) {
       throw new AuthorizationRequestErrors.InvalidRequestError(
-        'response_type is mandatory'
+        ERROR_DESCRIPTIONS.missing_response_type
       );
     }
 
@@ -256,7 +296,7 @@ export const authorizeRequest = async (
     const grant = AUTHORIZATION_REQUEST_GRANTS[responseType];
     if (grant == null) {
       throw new AuthorizationRequestErrors.UnsupportedResponseTypeError(
-        'unsupported response_type'
+        ERROR_DESCRIPTIONS.unsupported_response_type
       );
     }
 
@@ -288,17 +328,26 @@ export const authorizeRequest = async (
       validateParamValue<string>(
         authorizationRequestMeta.codeChallengeMethod.toLowerCase(),
         Object.keys(CODE_CHALLENGE_METHOD_TYPES),
-        'pkce code_challenge_method transform algorithm not supported'
+        ERROR_DESCRIPTIONS.invalid_code_challenge_method
       );
     }
 
-    return { authorizationRequestMeta, client };
+    // If there was no redirect_uri in the request we must use the one provided
+    // at client registration
+    if (!authorizationRequestMeta.redirectUri) {
+      authorizationRequestMeta.redirectUri = client.redirectUri;
+    }
+
+    return { ...authorizationRequestMeta, client };
   } catch (error) {
     const errorDto: ErrorDTO = _getErrorDtoFromError(error);
     if (state) {
       errorDto.state = state;
     }
-    return { error: errorDto, client };
+    return {
+      error: errorDto,
+      redirectUri: redirectUri ?? client.redirectUri,
+    };
   }
 };
 
@@ -312,44 +361,44 @@ export const getAuthorizationRequestMiddleware = (
   findClientFn: FindClientFunction,
   options: AuthorizationServerOptions
 ) => async (req, res, next) => {
-  const {
-    clientError,
-    authorizationRequestMeta,
-    error,
-    client,
-  } = await authorizeRequest(getRequest(req), findClientFn, options);
+  const authorizationRequestMeta = await authorizeRequest(
+    getRequest(req),
+    findClientFn,
+    options
+  );
 
   if (__DEV__) {
-    console.log('getAuthorizationRequestMiddleware', {
-      clientError,
-      authorizationRequestMeta,
-      error,
-      client,
+    console.log('getAuthorizationRequestMiddleware => ', {
+      ...authorizationRequestMeta,
     });
   }
 
-  if (clientError) {
-    // When a client error happens we must not redirect the user automatically
-    // to redirectUri because a clientError means either the client_id was
-    // missing, or the redirect_uri was invalid or missing
+  // When a client error happens we must not redirect the user automatically
+  // to redirectUri because a clientError means either the client_id was
+  // missing, or the redirect_uri was invalid or missing
+  if (authorizationRequestMeta.clientError) {
     req.session.authorizationServer = {
-      error: clientError,
+      error: authorizationRequestMeta.clientError,
     } as AuthorizationRequestErrorMeta;
 
     next();
     return;
   }
 
-  if (error) {
-    res.redirect(`${client.redirectUri}?${stringify({ ...error })}`);
+  // When an error happen which is not a clientError we can redirect to the
+  // redirect_uri with the error params
+  if (authorizationRequestMeta.error) {
+    res.redirect(
+      `${authorizationRequestMeta.redirectUri}?${stringify({
+        ...authorizationRequestMeta.error,
+      })}`
+    );
     return;
   }
 
   req.session.authorizationServer = {
     ...authorizationRequestMeta,
-    client,
   } as AuthorizationRequestMeta;
-
   next();
 };
 
@@ -382,4 +431,11 @@ const _getErrorDtoFromError = (error: AuthnzError | Error): ErrorDTO => {
     error: ERROR_CODES.server_error as ERROR_CODE,
     error_description: 'unidentified error',
   };
+};
+
+const _getSingleValue = <T>(value: T | T[]): T => {
+  if (Array.isArray(value)) {
+    return value[value.length - 1];
+  }
+  return value;
 };
