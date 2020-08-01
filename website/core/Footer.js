@@ -25,16 +25,6 @@ class Footer extends React.Component {
     return (
       <footer className="nav-footer" id="footer">
         <section className="sitemap">
-          <a href={this.props.config.baseUrl} className="nav-home">
-            {this.props.config.footerIcon && (
-              <img
-                src={this.props.config.baseUrl + this.props.config.footerIcon}
-                alt={this.props.config.title}
-                width="66"
-                height="58"
-              />
-            )}
-          </a>
           <div>
             <h5>Docs</h5>
             <a href={this.docUrl('doc1.html', this.props.language)}>
@@ -55,14 +45,16 @@ class Footer extends React.Component {
             <a
               href="https://stackoverflow.com/questions/tagged/"
               target="_blank"
-              rel="noreferrer noopener">
+              rel="noreferrer noopener"
+            >
               Stack Overflow
             </a>
             <a href="https://discordapp.com/">Project Chat</a>
             <a
               href="https://twitter.com/"
               target="_blank"
-              rel="noreferrer noopener">
+              rel="noreferrer noopener"
+            >
               Twitter
             </a>
           </div>
@@ -77,14 +69,16 @@ class Footer extends React.Component {
               data-count-href="/facebook/docusaurus/stargazers"
               data-show-count="true"
               data-count-aria-label="# stargazers on GitHub"
-              aria-label="Star this project on GitHub">
+              aria-label="Star this project on GitHub"
+            >
               Star
             </a>
             {this.props.config.twitterUsername && (
               <div className="social">
                 <a
                   href={`https://twitter.com/${this.props.config.twitterUsername}`}
-                  className="twitter-follow-button">
+                  className="twitter-follow-button"
+                >
                   Follow @{this.props.config.twitterUsername}
                 </a>
               </div>
@@ -106,15 +100,16 @@ class Footer extends React.Component {
         </section>
 
         <a
-          href="https://opensource.facebook.com/"
-          target="_blank"
+          href={this.props.config.baseUrl}
+          target="_self"
           rel="noreferrer noopener"
-          className="fbOpenSource">
+          className="footer-icon"
+        >
           <img
-            src={`${this.props.config.baseUrl}img/oss_logo.png`}
-            alt="Facebook Open Source"
-            width="170"
-            height="45"
+            src={`${this.props.config.baseUrl}img/logo.png`}
+            alt="logo"
+            width="150"
+            height="37"
           />
         </a>
         <section className="copyright">{this.props.config.copyright}</section>

@@ -14,15 +14,15 @@ const users = [
     caption: 'User1',
     // You will need to prepend the image path with your baseUrl
     // if it is not '/', like: '/test-site/img/image.jpg'.
-    image: '/img/undraw_open_source.svg',
+    image: '/auth-nz/img/undraw_open_source.svg',
     infoLink: 'https://www.facebook.com',
     pinned: true,
   },
 ];
 
 const siteConfig = {
-  title: 'Test Site', // Title for your website.
-  tagline: 'A website for testing',
+  title: '', // Title for your website.
+  tagline: 'OAuth 2.0 provider implementation for node.js',
   url: 'https://jim-y.github.io', // Your website URL
   baseUrl: '/auth-nz/', // Base URL for your project */
   // For github.io type URLs, you would set the url and baseUrl like:
@@ -48,36 +48,34 @@ const siteConfig = {
   users,
 
   /* path to images for header/footer */
-  headerIcon: 'img/favicon.ico',
-  footerIcon: 'img/favicon.ico',
-  favicon: 'img/favicon.ico',
+  headerIcon: 'img/logo.png',
+  footerIcon: 'img/logo.png',
+  favicon: 'img/favicon.png',
 
   /* Colors for website */
   colors: {
-    primaryColor: '#44933c',
+    //primaryColor: '#812D2D',
+    primaryColor: '#423144',
     secondaryColor: '#2f662a',
   },
 
+  stylesheets: [
+    'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,700;1,400&display=swap',
+  ],
+
   /* Custom fonts for website */
-  /*
   fonts: {
-    myFont: [
-      "Times New Roman",
-      "Serif"
-    ],
-    myOtherFont: [
-      "-apple-system",
-      "system-ui"
-    ]
+    main: ['IBM Plex Sans', 'Source Sans Pro', 'Times New Roman', 'Serif'],
+    blog: ['-apple-system', 'system-ui'],
   },
-  */
 
   // This copyright info is used in /core/Footer.js and blog RSS/Atom feeds.
   copyright: `Copyright © ${new Date().getFullYear()} Attila Kling`,
 
   highlight: {
     // Highlight.js theme to use for syntax highlighting in code blocks.
-    theme: 'default',
+    theme: 'darcula',
+    defaultLang: 'typescript',
   },
 
   // Add custom scripts here that would be placed in <script> tags.
@@ -100,7 +98,7 @@ const siteConfig = {
   // enableUpdateBy: true,
 
   // Show documentation's last update time.
-  // enableUpdateTime: true,
+  enableUpdateTime: true,
 
   // You may provide arbitrary config keys to be used as needed by your
   // template. For example, if you need your repo's URL...
