@@ -48,7 +48,8 @@ export const ERROR_DESCRIPTIONS = {
   missing_response_type: 'the "response_type" parameter is mandatory',
   unsupported_response_type: 'unsupported response_type',
   duplicate_query_parameter: 'duplicated query parameter',
-  invalid_code_challenge_method: 'pkce code_challenge_method transform algorithm not supported'
+  invalid_code_challenge_method:
+    'pkce code_challenge_method transform algorithm not supported',
 };
 
 export class AuthnzError extends Error {
