@@ -1,3 +1,0 @@
-# auth-nz
-
-## Documentation
