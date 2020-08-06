@@ -1,22 +1,24 @@
-import { stringify } from 'querystring';
-import { getFindClientFn, getFindAuthorizationCodeFn } from './utils';
+import { ensureFunction } from './utils';
 import {
   AccessToken,
-  AuthorizationCode,
-  AuthorizationRequestMeta,
   AuthorizationServerOptions,
   TokenRequestMeta,
-  OnDecisionCb,
   OnValidTokenCb,
-  FindClientFunction,
-  FindAuthorizationCodeFunction,
+  FindClient,
+  FindAuthorizationCode,
   AuthorizationServer,
+  CreateAuthorizationCode,
 } from './types';
-import { getAuthorizationRequestMiddleware } from './authorization-request';
+import {
+  getAuthorizationRequestMiddleware,
+  getOnDecisionMiddleware,
+} from './authorization-request';
 import { getValidateTokenRequestMiddleware } from './token-request';
 
 const BASE_SERVER_OPTIONS = {
   development: true,
+  sessionProperty: 'session',
+  metaProperty: 'authorizationServer',
 };
 
 export const createServer = (
@@ -36,69 +38,58 @@ export const createServer = (
      * - MUST ignore unrecognized params
      * - params MUST NOT be included more than once
      */
-    validateAuthorizationRequest(findClientFn?: FindClientFunction) {
-      // Get a FindClientFunction, either from params or from
-      // AuthorizationServerOptions or throw if none
-      findClientFn = getFindClientFn(
-        findClientFn,
-        options.findClient
-      ) as FindClientFunction;
+    validateAuthorizationRequest({ findClient }) {
+      findClient = ensureFunction<FindClient>(
+        findClient,
+        options?.findClient,
+        `You must either provide a callback to find a Client for ${this.validateAuthorizationRequest.name} or provide the callback in AuthorizationServerOptions`
+      );
 
-      return getAuthorizationRequestMiddleware(findClientFn, options);
+      return getAuthorizationRequestMiddleware(findClient, options);
     },
 
-    validateTokenRequest(
-      findClientFn?: FindClientFunction,
-      findAuthorizationCodeFn?: FindAuthorizationCodeFunction
-    ) {
-      // Get a FindClientFunction, either from params or from
-      // AuthorizationServerOptions or throw if none
-      findClientFn = getFindClientFn(
-        findClientFn,
-        options.findClient
-      ) as FindClientFunction;
+    validateTokenRequest({
+      findClient,
+      findAuthorizationCode,
+      revokeAccessTokens,
+    }) {
+      findClient = ensureFunction<FindClient>(
+        findClient,
+        options?.findClient,
+        `You must either provide a callback to find a Client for ${this.validateTokenRequest.name} or provide the callback in AuthorizationServerOptions`
+      );
 
-      // Get a FindAuthorizationCodeFunction, either from params or from
-      // AuthorizationServerOptions or throw if none
-      findAuthorizationCodeFn = getFindAuthorizationCodeFn(
-        findAuthorizationCodeFn,
-        options.findAuthorizationCode
-      ) as FindAuthorizationCodeFunction;
+      findAuthorizationCode = ensureFunction<FindAuthorizationCode>(
+        findAuthorizationCode,
+        options?.findAuthorizationCode,
+        `You must either provide a callback to find an Authorization Code for ${this.validateTokenRequest.name} or provide the callback in AuthorizationServerOptions`
+      );
 
       return getValidateTokenRequestMiddleware(
-        findClientFn,
-        findAuthorizationCodeFn,
-        options?.revokeAccessTokens
+        findClient,
+        findAuthorizationCode,
+        revokeAccessTokens ?? options?.revokeAccessTokens
       );
     },
 
-    onDecision(onDecisionCb: OnDecisionCb) {
-      return async (req, res) => {
-        const { state, client } = req.session
-          .authorizationServer as AuthorizationRequestMeta;
+    onDecision({ createAuthorizationCode }) {
+      createAuthorizationCode = ensureFunction<CreateAuthorizationCode>(
+        createAuthorizationCode,
+        options?.createAuthorizationCode,
+        `You must either provide a callback to create an Authorization Code for ${this.onDecision.name} or provide the callback in AuthorizationServerOptions`
+      );
 
-        let code: AuthorizationCode['code'];
-        try {
-          code = await onDecisionCb(
-            { ...req.session.authorizationServer } as AuthorizationRequestMeta,
-            req
-          );
-          if (code == null) throw new Error('Denied consent');
-        } catch (error) {
-          console.error(error);
-          throw new Error('Denied consent');
-        }
-
-        res.redirect(`${client.redirectUri}?${stringify({ code, state })}`);
-      };
+      return getOnDecisionMiddleware(createAuthorizationCode, options);
     },
 
     onValidToken(onValidTokenCb: OnValidTokenCb) {
-      return async (req, res) => {
+      return async (req: Express.Request, res) => {
         let accessToken: AccessToken;
         try {
           accessToken = await onValidTokenCb(
-            { ...req.session.authorizationServer } as TokenRequestMeta,
+            {
+              ...req[options.sessionProperty][options.metaProperty],
+            } as TokenRequestMeta,
             req
           );
           if (accessToken == null) {

@@ -7,7 +7,7 @@ import {
 import {
   AUTHORIZATION_REQUEST_RESPONSE_TYPE,
   Client,
-  FindClientFunction,
+  FindClient,
   AuthorizationRequestMeta,
   ClientValidationMeta,
   AuthorizationRequestMetaBase,
@@ -17,6 +17,8 @@ import {
   ERROR_CODE,
   Request,
   Query,
+  CreateAuthorizationCode,
+  AuthorizationCode,
 } from './types';
 import { snakeCaseToCamelCase, typer, getRequest } from './utils';
 import {
@@ -26,6 +28,7 @@ import {
   ERROR_DESCRIPTIONS,
 } from './errors';
 import { validateClient } from './shared';
+import Express from 'express';
 
 declare var __DEV__: boolean;
 
@@ -203,7 +206,7 @@ export const validateParamValue = <T>(
  */
 export const authorizeRequest = async (
   req: Request,
-  findClientFn: FindClientFunction,
+  findClientFn: FindClient,
   options?: Pick<AuthorizationServerOptions, 'development'>
 ): Promise<Partial<AuthorizationRequestMeta>> => {
   // Find & Validate Client. We must do this first, so that if any error happens
@@ -358,26 +361,39 @@ export const authorizeRequest = async (
  * no errors. Redirects when {error} has been raised by {authorizeRequest}
  */
 export const getAuthorizationRequestMiddleware = (
-  findClientFn: FindClientFunction,
+  findClientFn: FindClient,
   options: AuthorizationServerOptions
-) => async (req, res, next) => {
+) => async (
+  req: Express.Request,
+  res: Express.Response,
+  next: Express.NextFunction
+) => {
+  if (req[options.sessionProperty] == null) {
+    throw new Error(
+      "The authorization request middleware relies on a session object. It seems there's no session object set up."
+    );
+  }
+
   const authorizationRequestMeta = await authorizeRequest(
-    getRequest(req),
+    getRequest(req, options),
     findClientFn,
     options
   );
 
   if (__DEV__) {
-    console.log('getAuthorizationRequestMiddleware => ', {
-      ...authorizationRequestMeta,
-    });
+    console.log(
+      'getAuthorizationRequestMiddleware => authorizationRequestMeta => ',
+      {
+        ...authorizationRequestMeta,
+      }
+    );
   }
 
   // When a client error happens we must not redirect the user automatically
   // to redirectUri because a clientError means either the client_id was
   // missing, or the redirect_uri was invalid or missing
   if (authorizationRequestMeta.clientError) {
-    req.session.authorizationServer = {
+    req[options.sessionProperty][options.metaProperty] = {
       error: authorizationRequestMeta.clientError,
     } as AuthorizationRequestErrorMeta;
 
@@ -396,10 +412,71 @@ export const getAuthorizationRequestMiddleware = (
     return;
   }
 
-  req.session.authorizationServer = {
+  req[options.sessionProperty][options.metaProperty] = {
     ...authorizationRequestMeta,
   } as AuthorizationRequestMeta;
   next();
+};
+
+export const validateAuthorizationCode = async (
+  req: Request,
+  createAuthorizationCode: CreateAuthorizationCode,
+  authorizationRequestMeta: AuthorizationRequestMeta
+): Promise<{
+  error?: ErrorDTO;
+  code?: AuthorizationCode['code'];
+  qs: string;
+}> => {
+  let code: AuthorizationCode['code'];
+
+  try {
+    code = await createAuthorizationCode(authorizationRequestMeta, req);
+    if (code == null) {
+      throw new AuthorizationRequestErrors.AccessDeniedError(
+        ERROR_DESCRIPTIONS.denied_authorization_code
+      );
+    }
+    const query: any = { code };
+    if (authorizationRequestMeta.state) {
+      query.state = authorizationRequestMeta.state;
+    }
+    return { code, qs: stringify({ ...query }) };
+  } catch (error) {
+    const errorDto: ErrorDTO = _getErrorDtoFromError(error);
+    if (authorizationRequestMeta.state) {
+      errorDto.state = authorizationRequestMeta.state;
+    }
+    return {
+      error: errorDto,
+      qs: stringify({ ...error }),
+    };
+  }
+};
+
+export const getOnDecisionMiddleware = (
+  createAuthorizationCode: CreateAuthorizationCode,
+  options: AuthorizationServerOptions
+) => async (
+  req: Express.Request,
+  res: Express.Response,
+  _next: Express.NextFunction
+) => {
+  if (req[options.sessionProperty] == null) {
+    throw new Error(
+      "The onDecision middleware relies on a session object. It seems there's no session object set up."
+    );
+  }
+
+  const authorizationRequestMeta: AuthorizationRequestMeta =
+    req[options.sessionProperty][options.metaProperty];
+
+  const { qs } = await validateAuthorizationCode(
+    getRequest(req, options),
+    createAuthorizationCode,
+    authorizationRequestMeta
+  );
+
+  res.redirect(`${authorizationRequestMeta.redirectUri}?${qs}`);
 };
 
 /**

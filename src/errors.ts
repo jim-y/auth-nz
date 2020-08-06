@@ -50,6 +50,7 @@ export const ERROR_DESCRIPTIONS = {
   duplicate_query_parameter: 'duplicated query parameter',
   invalid_code_challenge_method:
     'pkce code_challenge_method transform algorithm not supported',
+  denied_authorization_code: 'the server denied creating an authorization code',
 };
 
 export class AuthnzError extends Error {

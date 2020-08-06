@@ -1,63 +1,74 @@
+import Express from 'express';
+
 export type AUTHORIZATION_REQUEST_RESPONSE_TYPE = 'code' | 'token';
 export type TOKEN_REQUEST_GRANT_TYPE =
   | 'authorization_code'
   | 'client_credentials';
 export type CODE_CHALLENGE_METHOD_TYPE = 'sha256' | 'plain';
 
-interface AsyncConnectTypeMiddleware {
-  (req, res, next): Promise<void>;
-}
-
 /**
  * AUTHORIZATION SERVER
  */
 
 export interface AuthorizationServerOptions {
-  findClient?: FindClientFunction;
-  findAuthorizationCode?: FindAuthorizationCodeFunction;
-  revokeAccessTokens?: RevokeAccessTokensFunction;
+  findClient?: FindClient;
+  findAuthorizationCode?: FindAuthorizationCode;
+  createAuthorizationCode: CreateAuthorizationCode;
+  revokeAccessTokens?: RevokeAccessTokens;
   development?: boolean;
+  sessionProperty?: string;
+  metaProperty?: string;
+}
+
+export interface ValidateAuthorizationRequestProps {
+  findClient: FindClient;
+}
+
+export interface ValidateTokenRequestProps {
+  findClient?: FindClient;
+  findAuthorizationCode?: FindAuthorizationCode;
+  revokeAccessTokens?: RevokeAccessTokens;
+}
+
+export interface OnDecisionProps {
+  createAuthorizationCode: CreateAuthorizationCode;
 }
 
 export interface AuthorizationServer {
   validateAuthorizationRequest(
-    findClientFn?: FindClientFunction
-  ): AsyncConnectTypeMiddleware;
+    props?: ValidateAuthorizationRequestProps
+  ): Express.RequestHandler;
 
-  validateTokenRequest(
-    findClientFn?: FindClientFunction,
-    findAuthorizationCodeFn?: FindAuthorizationCodeFunction,
-    revokeAccessTokens?: RevokeAccessTokensFunction
-  ): AsyncConnectTypeMiddleware;
+  validateTokenRequest(props?: ValidateTokenRequestProps): Express.Handler;
 
-  onDecision(onDecisionCb: OnDecisionCb): AsyncConnectTypeMiddleware;
-  onValidToken(onValidTokenCb: OnValidTokenCb): AsyncConnectTypeMiddleware;
+  onDecision(props?: OnDecisionProps): Express.RequestHandler;
+  onValidToken(onValidTokenCb: OnValidTokenCb): Express.RequestHandler;
 }
 
 /**
  * FUNCTIONS
  */
 
-export interface FindClientFunction {
+export interface FindClient {
   (clientId: Client['clientId'], req: Request): Promise<Client>;
 }
 
-export interface FindAuthorizationCodeFunction {
+export interface FindAuthorizationCode {
   (code: AuthorizationCode['code'], req: Request): Promise<AuthorizationCode>;
 }
 
-export interface RevokeAccessTokensFunction {
+export interface CreateAuthorizationCode {
+  (meta: AuthorizationRequestMeta, req: Request): Promise<
+    AuthorizationCode['code']
+  >;
+}
+
+export interface RevokeAccessTokens {
   (authorizationCode: AuthorizationCode): void;
 }
 
 export interface ValidateClientFunction {
   (client: Client, meta: Partial<ClientValidationMeta>): ErrorDTO | void;
-}
-
-export interface OnDecisionCb {
-  (meta: AuthorizationRequestMeta, req: any): Promise<
-    AuthorizationCode['code']
-  >;
 }
 
 export interface OnValidTokenCb {
@@ -100,6 +111,7 @@ export interface Request {
   query: Query;
   uri: string;
   method: string; // DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
+  session: object;
 }
 
 /**

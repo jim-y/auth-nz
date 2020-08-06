@@ -23,12 +23,12 @@ export class AuthorizationMiddleware implements NestMiddleware {
     );
 
     if (clientError) {
-      (req as any).authorizationServer = { error: clientError };
+      res.locals.authorizationServer = { error: clientError };
     } else if (error) {
       res.redirect(`${redirectUri}?${stringify({ ...error })}`);
       return;
     } else {
-      (req as any).authorizationServer = { redirectUri, ...meta };
+      res.locals.authorizationServer = { redirectUri, ...meta };
     }
     next();
   }

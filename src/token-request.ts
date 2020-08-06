@@ -4,11 +4,11 @@ import {
   TokenRequestMetaBase,
   ClientValidationMeta,
   Client,
-  FindClientFunction,
+  FindClient,
   AuthorizationCode,
-  FindAuthorizationCodeFunction,
+  FindAuthorizationCode,
   TokenRequestMeta,
-  RevokeAccessTokensFunction,
+  RevokeAccessTokens,
 } from './types';
 import {
   PARAMETERS,
@@ -21,9 +21,9 @@ import { BasicAuth, authenticateClient } from './client-auth';
 import { validateClient } from './shared';
 
 export const getValidateTokenRequestMiddleware = (
-  findClientFn: FindClientFunction,
-  findAuthorizationCodeFn: FindAuthorizationCodeFunction,
-  revokeAccessTokens?: RevokeAccessTokensFunction
+  findClientFn: FindClient,
+  findAuthorizationCodeFn: FindAuthorizationCode,
+  revokeAccessTokens?: RevokeAccessTokens
 ) => async (req, _res, next) => {
   console.log('validateTokenRequest', req.body);
 
@@ -77,11 +77,11 @@ export const getValidateTokenRequestMiddleware = (
 };
 
 const authorizationCodeFlow = async (
-  findClientFn: FindClientFunction,
-  findAuthorizationCodeFn: FindAuthorizationCodeFunction,
+  findClientFn: FindClient,
+  findAuthorizationCodeFn: FindAuthorizationCode,
   tokenRequestMeta: TokenRequestMetaBase,
   req,
-  revokeAccessTokens?: RevokeAccessTokensFunction
+  revokeAccessTokens?: RevokeAccessTokens
 ) => {
   // 4) Client validation/authentication
   // TODO implement client authentication
@@ -202,7 +202,7 @@ const authorizationCodeFlow = async (
 };
 
 const clientCredentialsFlow = async (
-  findClientFn: FindClientFunction,
+  findClientFn: FindClient,
   tokenRequestMeta: TokenRequestMetaBase,
   req
 ) => {

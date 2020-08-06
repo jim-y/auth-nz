@@ -1,4 +1,6 @@
 import {
+  validateAuthorizationCode,
+  validateMultipleRedirectUriParams,
   validateParamValue,
   validateQueryParams,
   validateURIForFragment,
@@ -9,6 +11,8 @@ import {
 } from './authorization-request';
 
 export const AuthorizationRequest = {
+  validateAuthorizationCode,
+  validateMultipleRedirectUriParams,
   validateParamValue,
   validateQueryParams,
   validateURIForFragment,

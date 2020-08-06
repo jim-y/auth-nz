@@ -33,6 +33,7 @@
   "author": "Attila Kling",
   "module": "dist/auth-nz.esm.js",
   "devDependencies": {
+    "@types/express": "^4.17.7",
     "husky": "^4.2.5",
     "tsdx": "^0.13.2",
     "tslib": "^2.0.0",

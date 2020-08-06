@@ -1,8 +1,4 @@
-import {
-  FindClientFunction,
-  FindAuthorizationCodeFunction,
-  Request,
-} from './types';
+import { Request, AuthorizationServerOptions } from './types';
 
 // Credit: https://hisk.io/javascript-snake-to-camel/
 export const snakeCaseToCamelCase = str =>
@@ -13,28 +9,17 @@ export const snakeCaseToCamelCase = str =>
       .replace('_', '')
   );
 
-export const getFindClientFn = (
-  findClientFn?: FindClientFunction,
-  findClient?: FindClientFunction
-): FindClientFunction | void => {
-  if (!findClientFn && !findClient) {
-    throw new Error(
-      'You must either provide a cb to this function to fetch a client or provide one in AuthorizationServerOptions'
-    );
+// Get a <F> function either from params or from
+// AuthorizationServerOptions or throw if none
+export const ensureFunction = <F>(
+  callbackFn: F,
+  fromOptionsFn: F,
+  errorMsg: string
+): F => {
+  if (!callbackFn && !fromOptionsFn) {
+    throw new Error(errorMsg);
   }
-  return findClientFn ?? findClient;
-};
-
-export const getFindAuthorizationCodeFn = (
-  findAuthorizationCodeFn: FindAuthorizationCodeFunction,
-  findAuthorizationCode: FindAuthorizationCodeFunction
-) => {
-  if (!findAuthorizationCodeFn && !findAuthorizationCode) {
-    throw new Error(
-      'You must either provide a cb to this function as second parameter to fetch an authorization code or provide one in AuthorizationServerOptions'
-    );
-  }
-  return findAuthorizationCodeFn ?? findAuthorizationCode;
+  return callbackFn ?? fromOptionsFn;
 };
 
 // Based on my own kata @codewars
@@ -76,7 +61,10 @@ export const typer = (function(toString) {
   };
 })(Object.prototype.toString);
 
-export const getRequest = (req): Request => {
+export const getRequest = (
+  req,
+  options?: AuthorizationServerOptions
+): Request => {
   // express, nest
   return {
     query: req.query,
@@ -84,6 +72,7 @@ export const getRequest = (req): Request => {
       req.originalUrl ? `/${req.originalUrl}` : ''
     }`,
     method: req.method,
+    session: options ? req[options.sessionProperty] : {},
   } as Request;
   // koa - tbd
 };
