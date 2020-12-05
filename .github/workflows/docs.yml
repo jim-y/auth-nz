@@ -24,7 +24,7 @@ jobs:
           cd website
           npm ci
           npm run build
-          GIT_USER=attila.kling@gmail.com
-          CURRENT_BRANCH=documentation
-          USE_SSH=true
+          GIT_USER=attila.kling@gmail.com \
+          CURRENT_BRANCH=documentation \
+          USE_SSH=true \
           npm run publish-gh-pages
