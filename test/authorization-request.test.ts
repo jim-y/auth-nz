@@ -15,7 +15,7 @@ import {
 } from '../src/errors';
 import {
   Request,
-  FindClientFunction,
+  FindClient,
   AuthorizationServerOptions,
   Client,
 } from '../src/types';
@@ -142,7 +142,7 @@ describe('authorizeRequest', () => {
     },
   ];
 
-  const findClient: FindClientFunction = async clientId =>
+  const findClient: FindClient = async clientId =>
     clients.find(c => c.clientId === clientId);
 
   let options = { development: true } as AuthorizationServerOptions;

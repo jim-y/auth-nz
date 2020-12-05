@@ -111,7 +111,7 @@ export interface Request {
   query: Query;
   uri: string;
   method: string; // DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
-  session: object;
+  session?: object;
 }
 
 /**
