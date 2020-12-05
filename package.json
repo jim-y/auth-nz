@@ -1,6 +1,20 @@
 {
+  "name": "auth-nz",
+  "author": "Attila Kling (attila.kling@gmail.com)",
   "version": "0.1.0",
   "license": "MIT",
+  "description": "OAuth 2.0 provider implementation for node.js",
+  "keywords": [
+    "oauth2",
+    "oauth provider",
+    "authorization"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jim-y/auth-nz.git"
+  },
+  "homepage": "https://jim-y.github.io/auth-nz/",
+  "module": "dist/auth-nz.esm.js",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
@@ -29,9 +43,6 @@
     "singleQuote": true,
     "trailingComma": "es5"
   },
-  "name": "auth-nz",
-  "author": "Attila Kling",
-  "module": "dist/auth-nz.esm.js",
   "devDependencies": {
     "@types/express": "^4.17.7",
     "husky": "^4.2.5",
