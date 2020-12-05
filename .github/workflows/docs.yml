@@ -24,6 +24,8 @@ jobs:
           cd website
           npm ci
           npm run build
+          git config --local user.email "attila.kling@gmail.com"
+          git config --local user.name "Attila Kling"
           GIT_USER=attila.kling@gmail.com \
           CURRENT_BRANCH=documentation \
           USE_SSH=true \
