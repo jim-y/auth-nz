@@ -1,0 +1,35 @@
+---
+id: getting-started
+title: Getting started
+sidebar_label: Getting started
+slug: /
+---
+
+## Install
+
+```bash  npm2yarn
+npm install auth-nz
+```
+
+## Determine integration level
+
+`auth-nz` was designed so that it can be integrated into **any** `node.js` web-app in a need for
+an OAuth provider.
+
+It reaches it's goal by exporting low level _atoms_ as well as higher level _abstractions_.
+
+You, as a developer, integrating `auth-nz` into your codebase need to identify the possible level
+of integration.
+
+This basically means that
+
+- You can mount `auth-nz` into an existing _connect like_ application and `auth-nz` will register it's handlers on the app
+- You can reach a sort of _balanced_ integration level by using `auth-nz`'s exported middleware functions and helpers to
+  register the OAuth endpoints in your application yourself
+- Or you can use **atoms** if you can't use any of `auth-nz`'s abstractions
+
+The more you go down with abstraction levels the more you will need to know about OAuth but the more flexible you can be.
+Using a high abstraction level means you can integrate the package more easily but it also means you have less flexibility
+with the integration and you will use the sensible defaults `auth-nz` makes.
+
+## Integrating into an existing web-app using atoms
