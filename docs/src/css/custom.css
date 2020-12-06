@@ -15,6 +15,23 @@
   --ifm-color-primary-lighter: rgb(102, 212, 189);
   --ifm-color-primary-lightest: rgb(146, 224, 208);
   --ifm-code-font-size: 95%;
+
+  --ifm-color-warning: hsl(48, 100%, 96%);
+  --ifm-color-success: hsl(142, 52%, 96%);
+}
+
+.alert .admonition-heading {
+  color: #000000b3;
+}
+
+.alert.alert--warning {
+  --ifm-alert-color: #947600;
+  --ra-admonition-icon-color: #947600;
+}
+
+.alert.alert--success {
+  --ifm-alert-color: #257942;
+  --ra-admonition-icon-color: #257942;
 }
 
 .docusaurus-highlight-code-line {

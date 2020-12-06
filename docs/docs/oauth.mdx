@@ -3,11 +3,88 @@ id: oauth
 title: OAuth2
 ---
 
-:::info
+:::tip
 Read the official OAuth2 reference document [rfc6749](https://tools.ietf.org/html/rfc6749)
 :::
 
 ## Overview
 
-## Authorization Code grant flow
+## Roles [[ref]](https://tools.ietf.org/html/rfc6749#page-6)
 
+OAuth defines four roles
+
+1. resource owner
+2. resource server
+3. client
+4. authorization server
+
+`auth-nz` is implementing the **authorization server** role so let's recap the definition of such a server
+
+> The server issuing access tokens to the client after successfully
+
+      authenticating the resource owner and obtaining authorization.
+
+So the sole purpose of this lib is to
+
+- validate requests made towards the authorization server
+- obtaining authorization (~getting consent)
+- issuing access tokens & refresh tokens
+
+:::caution
+Authenticating the resource owner is not part of this lib (at the moment) because getting authentication is a widespread topic.
+Some apps implement basic email+password logins while others incorporate SAML or other corporate solutions.
+We will leave this to you at this time.
+:::
+
+## Authorization Code grant flow [[ref]](https://tools.ietf.org/html/rfc6749#section-4.1)
+
+```diff
+
+    +----------+
+    | Resource |
+    |   Owner  |
+    |          |
+    +----------+
+         ^
+         |
+        (B)
+    +----|-----+          Client Identifier      +---------------+
+    |         -+----(A)-- & Redirection URI ---->|               |
+    |  User-   |                                 | Authorization |
+    |  Agent  -+----(B)-- User authenticates --->|     Server    |
+    |          |                                 |               |
+    |         -+----(C)-- Authorization Code ---<|               |
+    +-|----|---+                                 +---------------+
+      |    |                                         ^      v
+     (A)  (C)                                        |      |
+      |    |                                         |      |
+      ^    v                                         |      |
+    +---------+                                      |      |
+    |         |>---(D)-- Authorization Code ---------'      |
+    |  Client |          & Redirection URI                  |
+    |         |                                             |
+    |         |<---(E)----- Access Token -------------------'
+    +---------+       (w/ Optional Refresh Token)
+
+```
+
+For (A) the authorization server needs a so-called authorization endpoint. In this case `/oauth/authorize`
+
+### Authorization request [[ref]](https://tools.ietf.org/html/rfc6749#section-4.1.1)
+
+#### Parameters [[ref]](https://tools.ietf.org/html/rfc6749#section-4.1.1)
+
+| Name            |             | Value                                                                                                     |
+| --------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| `response_type` | REQUIRED    | Must be `code`                                                                                            |
+| `client_id`     | REQUIRED    |                                                                                                           |
+| `redirect_uri`  | OPTIONAL    | When not present the `redirect_uri` provided upon client registration will be used as the redirect target |
+| `scope`         | OPTIONAL    |                                                                                                           |
+| `state`         | RECOMMENDED |
+
+For example such a request could look like the following
+
+```bash
+GET /oauth/authorize?response_type=code&client_id=4eb5b1abeaf86439665205bc&redirect_uri=http://localhost:3000/oauth/callback&state=b10b49e24acc HTTP/1.1
+Host: localhost:3000
+```
