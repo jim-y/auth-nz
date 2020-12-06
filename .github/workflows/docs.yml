@@ -3,6 +3,8 @@ name: documentation
 on:
   push:
     branches: [documentation]
+    paths:
+      - 'docs/**'
 
 jobs:
   gh-release:
