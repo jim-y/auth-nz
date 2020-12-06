@@ -1,0 +1,1 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[8],{75:function(a){a.exports=JSON.parse('{"allTagsPath":"/auth-nz/blog/tags","slug":"facebook","name":"facebook","count":1,"permalink":"/auth-nz/blog/tags/facebook"}')}}]);
