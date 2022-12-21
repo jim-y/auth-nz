@@ -1,78 +1,118 @@
-import Express from 'express';
-
 export type AUTHORIZATION_REQUEST_RESPONSE_TYPE = 'code' | 'token';
-export type TOKEN_REQUEST_GRANT_TYPE =
-  | 'authorization_code'
-  | 'client_credentials';
+export type TOKEN_REQUEST_GRANT_TYPE = 'authorization_code' | 'client_credentials';
 export type CODE_CHALLENGE_METHOD_TYPE = 'sha256' | 'plain';
+export enum AUTHORIZATION_GRANT_DECISION {
+    DECLINED,
+    GRANTED,
+}
+
+/**
+ * OAUTH
+ */
+
+export type OauthParameters = {
+    RESPONSE_TYPE: string;
+    GRANT_TYPE: string;
+    CLIENT_ID: string;
+    REDIRECT_URI: string;
+    CODE: string;
+    SCOPE: string;
+    STATE: string;
+
+    // PKCE
+    CODE_VERIFIER: string;
+    CODE_CHALLENGE: string;
+    CODE_CHALLENGE_METHOD: string;
+};
 
 /**
  * AUTHORIZATION SERVER
  */
-
-export interface AuthorizationServerOptions {
-  findClient?: FindClient;
-  findAuthorizationCode?: FindAuthorizationCode;
-  createAuthorizationCode: CreateAuthorizationCode;
-  revokeAccessTokens?: RevokeAccessTokens;
-  development?: boolean;
-  sessionProperty?: string;
-  metaProperty?: string;
+export interface AuthNZService {
+    settings: Settings;
+    use(cb: UseFunction): void;
+    validateAuthorizeRequest(req: unknown): Promise<ValidateAuthorizeRequestResponse>;
+    decisionHandler(
+        decision: number,
+        authorizationRequestMeta: AuthorizationRequestMeta,
+        user: UserModel
+    ): Promise<any>;
+    validateTokenRequest(req: unknown): Promise<any>;
 }
 
-export interface ValidateAuthorizationRequestProps {
-  findClient: FindClient;
+export interface UseFunction {
+    (settings: Settings): void;
 }
 
-export interface ValidateTokenRequestProps {
-  findClient?: FindClient;
-  findAuthorizationCode?: FindAuthorizationCode;
-  revokeAccessTokens?: RevokeAccessTokens;
+export type ServerProps = {
+    getClient?: Settings['getClient'];
+    devMode?: boolean;
+};
+
+export type Settings = {
+    getClient?(clientId: Client['clientId'], req?: unknown): Promise<Client | null>;
+    getQuery(req: unknown): Query;
+    getBody(req: unknown): object;
+    getUri(req: unknown): string;
+    getMethod(req: unknown): string;
+
+    oauthParamsMap: OauthParameters;
+
+    createAuthorizationCode(
+        authorizationRequestMeta: AuthorizationRequestMeta,
+        user: UserModel,
+        codeExpirationTime: number
+    ): Promise<AuthorizationCodeModel>;
+
+    expirationTimes: {
+        authorizationCode: number;
+        accessToken?: number;
+        refreshToken?: number;
+    };
+
+    devMode: boolean;
+};
+
+/**
+ * AUTHORIZATION REQUEST
+ */
+
+export interface AuthorizationRequestMeta extends RequestMetaBase {
+    responseType: AUTHORIZATION_REQUEST_RESPONSE_TYPE; // REQUIRED
+    clientId: Client['clientId']; // REQUIRED
+
+    codeChallenge?: string; // OPTIONAL / RECOMMENDED
+    codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE; // OPTIONAL / RECOMMENDED
+
+    originalUri?: string;
 }
 
-export interface OnDecisionProps {
-  createAuthorizationCode: CreateAuthorizationCode;
-}
+export type AuthorizationRequestResponse = AuthorizationRequestMeta & {
+    serializedMeta: string; // base64 encoded
+    client: Client;
+};
 
-export interface AuthorizationServer {
-  validateAuthorizationRequest(
-    props?: ValidateAuthorizationRequestProps
-  ): Express.RequestHandler;
+export type ValidateAuthorizeRequestResponse =
+    | AuthorizationRequestClientError
+    | AuthorizationRequestErrorMeta
+    | AuthorizationRequestResponse;
 
-  validateTokenRequest(props?: ValidateTokenRequestProps): Express.Handler;
+export type AuthorizationRequestClientError = {
+    clientError: ErrorDTO;
+};
 
-  onDecision(props?: OnDecisionProps): Express.RequestHandler;
-  onValidToken(onValidTokenCb: OnValidTokenCb): Express.RequestHandler;
+export interface AuthorizationRequestErrorMeta {
+    error: ErrorDTO;
+    redirectUri: Client['redirectUri'];
+    redirectTo: string;
 }
 
 /**
  * FUNCTIONS
  */
 
-export interface FindClient {
-  (clientId: Client['clientId'], req: Request): Promise<Client>;
-}
-
-export interface FindAuthorizationCode {
-  (code: AuthorizationCode['code'], req: Request): Promise<AuthorizationCode>;
-}
-
-export interface CreateAuthorizationCode {
-  (meta: AuthorizationRequestMeta, req: Request): Promise<
-    AuthorizationCode['code']
-  >;
-}
-
-export interface RevokeAccessTokens {
-  (authorizationCode: AuthorizationCode): void;
-}
-
 export interface ValidateClientFunction {
-  (client: Client, meta: Partial<ClientValidationMeta>): ErrorDTO | void;
-}
-
-export interface OnValidTokenCb {
-  (meta: TokenRequestMeta, req: any): Promise<AccessToken>;
+    (client: Client, meta: Partial<ClientValidationMeta>, devMode: boolean): ErrorDTO | void;
 }
 
 /**
@@ -80,38 +120,43 @@ export interface OnValidTokenCb {
  */
 
 export interface Client {
-  clientId: string;
-  redirectUri: string;
-  clientSecret: string;
+    clientId: string;
+    redirectUri: string;
+    clientSecret: string;
+    confidential: boolean;
 }
 
-export interface AuthorizationCode {
-  code: string;
-  clientId: Client['clientId'];
-  redirectUri: Client['redirectUri'];
-  userId: any;
-  expiresAt: number;
-  used?: boolean;
-  scope?: string;
-  codeChallenge?: string;
-  codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE;
+export interface AuthorizationCodeModel {
+    code: string;
+    clientId: Client['clientId'];
+    redirectUri: Client['redirectUri'];
+    user: UserModel;
+    expiresAt: number;
+    scope?: string;
+    codeChallenge?: string;
+    codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE;
 }
 
 export interface AccessToken {
-  token: string;
-  expiresAt: number;
-  ttl: number;
+    token: string;
+    expiresAt: number;
+    ttl: number;
 }
 
+export type UserModel = {
+    id: string | number;
+};
+
 export interface Query {
-  [param: string]: string | string[];
+    [param: string]: string | string[];
 }
 
 export interface Request {
-  query: Query;
-  uri: string;
-  method: string; // DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
-  session?: object;
+    query: Query;
+    uri?: string;
+    url?: string;
+    method: string; // DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT
+    session?: object;
 }
 
 /**
@@ -119,23 +164,20 @@ export interface Request {
  */
 
 export type ERROR_CODE =
-  | 'invalid_request'
-  | 'unauthorized_client'
-  | 'access_denied'
-  | 'unsupported_response_type'
-  | 'invalid_scope'
-  | 'server_error'
-  | 'temporarily_unavailable';
+    | 'invalid_request'
+    | 'unauthorized_client'
+    | 'access_denied'
+    | 'unsupported_response_type'
+    | 'invalid_scope'
+    | 'server_error'
+    | 'temporarily_unavailable';
 
 export interface ErrorDTO {
-  error: ERROR_CODE;
-  error_description?: string;
-  error_uri?: string;
-  state?: string;
-}
-
-export interface AuthorizationRequestErrorMeta {
-  error: ErrorDTO;
+    error: ERROR_CODE;
+    error_description?: string;
+    error_uri?: string;
+    error_hint?: string;
+    state?: string;
 }
 
 /**
@@ -143,40 +185,20 @@ export interface AuthorizationRequestErrorMeta {
  */
 
 export interface RequestMetaBase {
-  client: Client;
-  scope?: string; // OPTIONAL
-  state?: string; // OPTIONAL / RECOMMENDED
-  redirectUri?: Client['redirectUri']; // OPTIONAL
+    client: Client;
+    scope?: string; // OPTIONAL
+    state?: string; // OPTIONAL / RECOMMENDED
+    redirectUri?: Client['redirectUri']; // OPTIONAL
 }
-
-export interface AuthorizationRequestMeta extends RequestMetaBase {
-  responseType: AUTHORIZATION_REQUEST_RESPONSE_TYPE; // REQUIRED
-  clientId: Client['clientId']; // REQUIRED
-
-  codeChallenge?: string; // OPTIONAL / RECOMMENDED
-  codeChallengeMethod?: CODE_CHALLENGE_METHOD_TYPE; // OPTIONAL / RECOMMENDED
-
-  // Errors
-  clientError?: ErrorDTO;
-  error?: ErrorDTO;
-}
-
-export type AuthorizationRequestMetaBase = Omit<
-  AuthorizationRequestMeta,
-  'client' | 'clientError' | 'error'
->;
 
 export interface TokenRequestMeta extends RequestMetaBase {
-  grantType: TOKEN_REQUEST_GRANT_TYPE; // REQUIRED
-  code?: AuthorizationCode['code']; // OPTIONAL -> client_credentials grant
-  clientId?: Client['clientId']; // OPTIONAL -> might be coming from Basic auth
-  codeVerifier?: string; // OPTIONAL -> PKCE
-  authorizationCode?: AuthorizationCode; // OPTIONAL authorization_code grant
+    grantType: TOKEN_REQUEST_GRANT_TYPE; // REQUIRED
+    code?: AuthorizationCodeModel['code']; // OPTIONAL -> client_credentials grant
+    clientId?: Client['clientId']; // OPTIONAL -> might be coming from Basic auth
+    codeVerifier?: string; // OPTIONAL -> PKCE
+    authorizationCode?: AuthorizationCodeModel; // OPTIONAL authorization_code grant
 }
 
 export type TokenRequestMetaBase = Omit<TokenRequestMeta, 'client'>;
 
-export type ClientValidationMeta = Pick<
-  Client,
-  'clientId' | 'clientSecret' | 'redirectUri'
->;
+export type ClientValidationMeta = Pick<Client, 'clientId' | 'clientSecret' | 'redirectUri'>;

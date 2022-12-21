@@ -1,111 +1,85 @@
-import { ensureFunction } from './utils';
-import {
-  AccessToken,
-  AuthorizationServerOptions,
-  TokenRequestMeta,
-  OnValidTokenCb,
-  FindClient,
-  FindAuthorizationCode,
-  AuthorizationServer,
-  CreateAuthorizationCode,
-} from './types';
-import {
-  getAuthorizationRequestMiddleware,
-  getOnDecisionMiddleware,
-} from './authorization-request';
-import { getValidateTokenRequestMiddleware } from './token-request';
+import { getQuery, getUri, getMethod, getBody } from './utils';
+import { Settings, ServerProps, AuthNZService, AuthorizationRequestMeta, UserModel } from './types';
+import { validateAuthorizeRequest, decisionHandler, createAuthorizationCode } from './authorization-request';
+import { validateTokenRequest } from './token-request';
+import { oauthParamsMap } from './constants';
 
-const BASE_SERVER_OPTIONS = {
-  development: true,
-  sessionProperty: 'session',
-  metaProperty: 'authorizationServer',
-};
-
-export const createServer = (
-  options = {} as AuthorizationServerOptions
-): AuthorizationServer => {
-  options = { ...BASE_SERVER_OPTIONS, ...options };
-  return {
-    /**
-     * The authorization endpoint (3.1) is only used by
-     * - the authorization code grant and
-     * - implicit grants
-     * Requirements:
-     * - the URI MUST NOT include a fragment component
-     * - require TLS
-     * - must support GET may support POST
-     * - params without value MUST be omitted
-     * - MUST ignore unrecognized params
-     * - params MUST NOT be included more than once
-     */
-    validateAuthorizationRequest({ findClient }) {
-      findClient = ensureFunction<FindClient>(
-        findClient,
-        options?.findClient,
-        `You must either provide a callback to find a Client for ${this.validateAuthorizationRequest.name} or provide the callback in AuthorizationServerOptions`
-      );
-
-      return getAuthorizationRequestMiddleware(findClient, options);
-    },
-
-    validateTokenRequest({
-      findClient,
-      findAuthorizationCode,
-      revokeAccessTokens,
-    }) {
-      findClient = ensureFunction<FindClient>(
-        findClient,
-        options?.findClient,
-        `You must either provide a callback to find a Client for ${this.validateTokenRequest.name} or provide the callback in AuthorizationServerOptions`
-      );
-
-      findAuthorizationCode = ensureFunction<FindAuthorizationCode>(
-        findAuthorizationCode,
-        options?.findAuthorizationCode,
-        `You must either provide a callback to find an Authorization Code for ${this.validateTokenRequest.name} or provide the callback in AuthorizationServerOptions`
-      );
-
-      return getValidateTokenRequestMiddleware(
-        findClient,
-        findAuthorizationCode,
-        revokeAccessTokens ?? options?.revokeAccessTokens
-      );
-    },
-
-    onDecision({ createAuthorizationCode }) {
-      createAuthorizationCode = ensureFunction<CreateAuthorizationCode>(
+export function createAuthnzService({ getClient, devMode }: ServerProps): AuthNZService {
+    const settings: Settings = {
+        getBody,
+        getQuery,
+        getUri,
+        getMethod,
         createAuthorizationCode,
-        options?.createAuthorizationCode,
-        `You must either provide a callback to create an Authorization Code for ${this.onDecision.name} or provide the callback in AuthorizationServerOptions`
-      );
+        oauthParamsMap,
+        devMode: devMode != null ? devMode : false,
+        expirationTimes: {
+            authorizationCode: 60 * 1000, // 60 seconds
+        },
+    };
 
-      return getOnDecisionMiddleware(createAuthorizationCode, options);
-    },
+    if (getClient) settings.getClient = getClient;
 
-    onValidToken(onValidTokenCb: OnValidTokenCb) {
-      return async (req: Express.Request, res) => {
-        let accessToken: AccessToken;
-        try {
-          accessToken = await onValidTokenCb(
-            {
-              ...req[options.sessionProperty][options.metaProperty],
-            } as TokenRequestMeta,
-            req
-          );
-          if (accessToken == null) {
-            throw new Error('Could not create access_token');
-          }
-        } catch (error) {
-          console.error(error);
-          throw error;
-        }
+    const use = (cb: (settings: Settings) => void) => {
+        cb(settings);
+    };
 
-        res.json({
-          access_token: accessToken.token,
-          token_type: 'bearer',
-          expires_in: accessToken.ttl,
-        });
-      };
-    },
-  };
-};
+    return {
+        settings,
+        validateAuthorizeRequest: req => validateAuthorizeRequest(req, settings),
+        decisionHandler: (decision: number, authorizationRequestMeta: AuthorizationRequestMeta, user: UserModel) =>
+            decisionHandler(decision, authorizationRequestMeta, user, settings),
+        validateTokenRequest: req => validateTokenRequest(req, settings),
+        use,
+    };
+}
+
+// export const createServer = (options = {} as AuthorizationServerOptions): AuthorizationServer => {
+//     return {
+//         validateTokenRequest(props: ValidateTokenRequestProps) {
+//             const findClient = ensureFunction(
+//                 props?.findClient,
+//                 options?.findClient,
+//                 `You must either provide a callback to find a Client for ${this.validateTokenRequest.name} or provide the callback in AuthorizationServerOptions`
+//             );
+
+//             const findAuthorizationCode = ensureFunction<FindAuthorizationCode>(
+//                 props?.findAuthorizationCode,
+//                 options?.findAuthorizationCode,
+//                 `You must either provide a callback to find an Authorization Code for ${this.validateTokenRequest.name} or provide the callback in AuthorizationServerOptions`
+//             );
+
+//             return getValidateTokenRequestMiddleware(
+//                 findClient,
+//                 findAuthorizationCode,
+//                 props?.revokeAccessTokens ?? options?.revokeAccessTokens
+//             );
+//         },
+
+//         onValidToken(onValidTokenCb: OnValidTokenCb) {
+//             return async (req: Express.Request, res) => {
+//                 let accessToken: AccessToken;
+//                 try {
+//                     accessToken = await onValidTokenCb(
+//                         {
+//                             ...req[options.sessionProperty][options.metaProperty],
+//                         } as TokenRequestMeta,
+//                         req
+//                     );
+//                     if (accessToken == null) {
+//                         throw new Error('Could not create access_token');
+//                     }
+//                 } catch (error) {
+//                     console.error(error);
+//                     throw error;
+//                 }
+
+//                 res.json({
+//                     access_token: accessToken.token,
+//                     token_type: 'bearer',
+//                     expires_in: accessToken.ttl,
+//                 });
+//             };
+//         },
+//     };
+// };
