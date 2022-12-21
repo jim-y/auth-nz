@@ -1,25 +1,17 @@
 import {
-  validateAuthorizationCode,
-  validateMultipleRedirectUriParams,
-  validateParamValue,
-  validateQueryParams,
-  validateURIForFragment,
-  validateURIForTLS,
-  validateURIHttpMethod,
-  sanitizeQueryParams,
-  authorizeRequest,
-} from './authorization-request';
+    validateMultipleRedirectUriParams,
+    validateParamValue,
+    validateQueryParams,
+    validateURIForFragment,
+    validateURIForTLS,
+    validateURIHttpMethodForGerOrPost,
+} from './validation';
 
 export const AuthorizationRequest = {
-  validateAuthorizationCode,
-  validateMultipleRedirectUriParams,
-  validateParamValue,
-  validateQueryParams,
-  validateURIForFragment,
-  validateURIForTLS,
-  validateURIHttpMethod,
-  sanitizeQueryParams,
-  authorizeRequest,
+    validateMultipleRedirectUriParams,
+    validateParamValue,
+    validateQueryParams,
+    validateURIForFragment,
+    validateURIForTLS,
+    validateURIHttpMethodForGerOrPost,
 };
-
-export { getRequest } from './utils';
