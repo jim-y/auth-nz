@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Consent page</title>
+  <link rel="stylesheet" href="global.css">
+  <style>
+    form > div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+<form method="POST">
+  <h2>Consent</h2>
+  <span>XY wants to access your data. Do you provide consent?</span>
+  <input type="hidden" name="decision" value="1">
+  <div>
+    <button>Deny</button>
+    <button type="submit">Grant</button>
+  </div>
+</form>
+<script>
+  const form = document.querySelector('form');
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('redirectTo')) {
+    form.action = url.searchParams.get('redirectTo');
+  }
+</script>
+</body>
+</html>

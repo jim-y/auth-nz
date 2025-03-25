@@ -1,0 +1,11 @@
+html {
+    font-size: 16px;
+}
+
+form {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 10% auto;
+}

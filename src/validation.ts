@@ -1,6 +1,20 @@
-import { ValidateClientFunction, Client, ClientValidationMeta, ErrorDTO, ERROR_CODE, Settings, Query } from './types';
-import { ErrorCodes, ErrorDescriptions, RequestErrors } from './errors';
-import { sanitizeQueryParams } from './utils';
+import type {
+    ErrorDescription,
+    ValidateClientFunction,
+    OAuthClient,
+    ClientValidationMeta,
+    Query,
+    ResponseType,
+    OIDCParam
+} from './types/index.ts';
+import {
+    ERROR_DESCRIPTIONS,
+    UnauthorizedClientError,
+    InvalidRequestError,
+    UnsupportedResponseTypeError
+} from './errors.ts';
+import { sanitizeQueryParams } from './utils.ts';
+import { HTTP_LITERALS, OIDC_PARAMS, RESPONSE_TYPES } from './constants.ts';
 
 /**
  * ------------------
@@ -8,32 +22,47 @@ import { sanitizeQueryParams } from './utils';
  * ------------------
  */
 
+export const getUrl = (uri: string): URL => {
+    try {
+        return new URL(uri);
+    } catch (error) {
+        throw new InvalidRequestError(
+            ERROR_DESCRIPTIONS.malformed_url,
+            JSON.stringify({
+                uri,
+                validator: 'https://nodejs.org/api/url.html#class-url'
+            })
+        );
+    }
+};
+
+/**
+ * Throws, if the given uri contains duplicated params
+ * @throws InvalidRequestError
+ */
+export const validateDuplicates = (params: URLSearchParams) => {
+    // We must not let ambiguous urls
+    // We need to do an excess check here to overcome open redirector attacks
+    // It is possible for a hacker to tamper the request and add an additional
+    // redirect_uri parameter at the end of the qs hoping that we will redirect
+    // the code to that uri. In this case we must not redirect to redirect_uri
+    // but to show an error screen for the resource owner. A flagged error won't
+    // yield a redirect_uri redirect.
+    for (const param of params.keys()) {
+        const isFlaggedError = param === OIDC_PARAMS.client_id || param === OIDC_PARAMS.redirect_uri;
+        if (params.getAll(param).length > 1) {
+            throw new InvalidRequestError(ERROR_DESCRIPTIONS.duplicate_query_parameter, param, isFlaggedError);
+        }
+    }
+};
+
 /**
  * Throws, if the given uri contains a fragment component
  * @throws InvalidRequestError
  */
-export const validateURIForFragment = (uri: string, devMode = false) => {
-    let url;
-
-    try {
-        url = new URL(uri);
-    } catch (error) {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.malformed_url,
-            devMode
-                ? JSON.stringify({
-                      uri,
-                      validator: 'https://nodejs.org/api/url.html#class-url',
-                  })
-                : null
-        );
-    }
-
+export const validateURIForFragment = (url: URL) => {
     if (url.hash != null && url.hash !== '') {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.url_fragment,
-            devMode ? 'uri must not contain a fragment' : null
-        );
+        throw new InvalidRequestError(ERROR_DESCRIPTIONS.url_fragment, 'uri must not contain a fragment');
     }
 };
 
@@ -41,103 +70,82 @@ export const validateURIForFragment = (uri: string, devMode = false) => {
  * Throws, if uri is not using TLS that is uri's protocol value is not "https:"
  * @throws InvalidRequestError
  */
-export const validateURIForTLS = (uri: string, devMode = false) => {
-    let url;
-
-    try {
-        url = new URL(uri);
-    } catch (error) {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.malformed_url,
-            devMode
-                ? JSON.stringify({
-                      uri,
-                      validator: 'https://nodejs.org/api/url.html#class-url',
-                  })
-                : null
-        );
-    }
-
-    if (url.protocol !== 'https:') {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.missing_tls,
-            devMode
-                ? JSON.stringify({
-                      uri,
-                  })
-                : null
-        );
+export const validateURIForTLS = (url: URL) => {
+    if (process.env.NODE_ENV && process.env.NODE_ENV !== 'development') {
+        if (url.protocol !== 'https:') {
+            throw new InvalidRequestError(ERROR_DESCRIPTIONS.missing_tls, 'The use of the https protocol is mandatory');
+        }
     }
 };
 
 /**
- * Throws, if http method is missing or it is not "get" or "post"
+ * > Authorization Servers MUST support the use of the HTTP GET and POST methods defined in RFC 7231 [RFC7231]
+ * > at the Authorization Endpoint.
+ * Throws, if http method is missing, or it is not "get" or "post"
  * @throws InvalidRequestError
  */
-export const validateURIHttpMethodForGerOrPost = (method: string, devMode = false) => {
-    if (!method || (method?.toLowerCase() !== 'get' && method?.toLowerCase() !== 'post')) {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.invalid_http_method,
-            devMode ? `Only HTTP GET or POST are allowed. Found: ${method}` : null
+export const validateURIHttpMethodForGerOrPost = (method: string) => {
+    if (!method || (method?.toLowerCase() !== HTTP_LITERALS.get && method?.toLowerCase() !== HTTP_LITERALS.post)) {
+        throw new InvalidRequestError(
+            ERROR_DESCRIPTIONS.invalid_http_method,
+            `Only HTTP GET or POST are allowed. Found: ${method}`
         );
     }
 };
 
 /**
- * Throws, if http method is missing or it is not "post"
+ * Throws, if http method is missing, or it is not "post"
  * @throws InvalidRequestError
  */
 export const validateURIHttpMethodForPost = (method: string, devMode = false) => {
-    if (!method || method?.toLowerCase() !== 'post') {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.invalid_http_method,
+    if (!method || method?.toLowerCase() !== HTTP_LITERALS.post) {
+        throw new InvalidRequestError(
+            ERROR_DESCRIPTIONS.invalid_http_method,
             devMode ? `Only HTTP POST is allowed. Found: ${method}` : null
         );
     }
 };
 
 /**
- * Throws, if the query component contains duplicated keys
- * @throws InvalidRequestError
+ * response_type is mandatory
+ * @param responseType
  */
-export const validateQueryParams = (query: string | object, validParams: string[], devMode = false) => {
-    const _query = sanitizeQueryParams(query, validParams);
-
-    const paramKeys: string[] = Object.keys(_query);
-    const uniqueParamKeys = new Set(paramKeys);
-
-    // it is also possible that koa,express will create an array of values when
-    // parsing the qs
-    // E.g from express docs : GET /shoes?color[]=blue&color[]=black&color[]=red
-    // console.dir(req.query.color) => [blue, black, red]
-    if (paramKeys.length !== uniqueParamKeys.size || Object.values(_query).some(val => Array.isArray(val))) {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.duplicate_query_parameter,
-            devMode ? JSON.stringify(query) : null
+export const validateResponseType = (responseType: ResponseType) => {
+    if (responseType == null) {
+        throw new InvalidRequestError(
+            ERROR_DESCRIPTIONS.missing_response_type,
+            `Possible values: ${Object.values(RESPONSE_TYPES).join()}`
+        );
+    }
+    if (responseType !== RESPONSE_TYPES.code) {
+        throw new UnsupportedResponseTypeError(
+            ERROR_DESCRIPTIONS.unsupported_response_type,
+            `Possible values: ${Object.values(RESPONSE_TYPES).join()}`
         );
     }
 };
 
-export const validateBodyParameters = (body: object, devMode = false) => {
-    const paramKeys: string[] = Object.keys(body);
-    const uniqueParamKeys = new Set(paramKeys);
-    if (paramKeys.length !== uniqueParamKeys.size || Object.values(body).some(val => Array.isArray(val))) {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.duplicate_body_parameter,
-            devMode ? JSON.stringify(body) : null
-        );
+/**
+ * client_id is mandatory
+ */
+export const validateClientId = (client_id: OAuthClient['client_id']) => {
+    if (client_id == null) {
+        throw new InvalidRequestError(ERROR_DESCRIPTIONS.missing_client_id, OIDC_PARAMS.client_id, true);
     }
 };
 
-export const validateMultipleRedirectUriParams = (query: Query, { oauthParamsMap, devMode }: Settings) => {
-    const redirectUriValue = query[oauthParamsMap.REDIRECT_URI];
-    const numOfRedirectUriParams = Object.keys(query).filter(key => key === oauthParamsMap.REDIRECT_URI).length;
+/**
+ * redirect_uri is mandatory
+ */
+export const validateRedirectURI = (redirect_uri: string) => {
+    if (redirect_uri == null) {
+        throw new InvalidRequestError(ERROR_DESCRIPTIONS.missing_redirect_uri, OIDC_PARAMS.redirect_uri, true);
+    }
 
-    if (numOfRedirectUriParams > 1 || (Array.isArray(redirectUriValue) && redirectUriValue.length > 1)) {
-        throw new RequestErrors.InvalidRequestError(
-            ErrorDescriptions.duplicate_query_parameter,
-            devMode ? 'multiple redirect_uri' : null
-        );
+    try {
+        new URL(redirect_uri);
+    } catch (error) {
+        throw new InvalidRequestError(ERROR_DESCRIPTIONS.invalid_redirect_uri, OIDC_PARAMS.redirect_uri, true);
     }
 };
 
@@ -145,57 +153,46 @@ export const validateMultipleRedirectUriParams = (query: Query, { oauthParamsMap
  * Throws, if the provided value can not be found in a set of valid values
  * @throws InvalidRequestError
  */
-export const validateParamValue = <T>(value: T, validValues: T[], errorDescription?: string) => {
+export const validateParamValue = <T>(value: T, validValues: T[], errorDescription?: ErrorDescription) => {
     if (!value || !validValues || validValues.indexOf(value) === -1) {
-        throw new RequestErrors.InvalidRequestError(errorDescription);
+        throw new InvalidRequestError(errorDescription, 'Invalid param value');
     }
 };
 
-export const validateClient: ValidateClientFunction = (
-    client: Client,
-    meta: Partial<ClientValidationMeta>,
-    devMode: Settings['devMode'] = false
-): ErrorDTO | void => {
+export const validateClient = (client: OAuthClient, meta: Partial<ClientValidationMeta>): void => {
     if (client == null) {
-        return {
-            error: ErrorCodes.unauthorized_client as ERROR_CODE,
-            error_description: ErrorDescriptions.unregistered_client,
-            error_hint: devMode ? "authService.getClient didn't find any client by the provided clientId" : null,
-        };
+        throw new UnauthorizedClientError(
+            ERROR_DESCRIPTIONS.unregistered_client,
+            "We couldn't find any client by the provided clientId",
+            true
+        );
     }
 
-    if (client.clientId !== meta.clientId) {
-        return {
-            error: ErrorCodes.unauthorized_client as ERROR_CODE,
-            error_description: ErrorDescriptions.invalid_client_id,
-            error_hint: devMode
-                ? "clientId in the request is different than the found client's clientId. Likely some bug in getClient"
-                : null,
-        };
+    if (client.client_id !== meta.clientId) {
+        throw new UnauthorizedClientError(
+            ERROR_DESCRIPTIONS.client_id_mismatch,
+            "clientId in the request is different than the found client's clientId. Likely some bug in getClient",
+            true
+        );
+    }
+
+    if (meta.grantType && !client.grant_types.includes(meta.grantType)) {
+        throw new UnauthorizedClientError(
+            ERROR_DESCRIPTIONS.invalid_grant_type,
+            "the client identified by the provided clientId can not use this grant type"
+        )
     }
 
     // TODO check base path instead of equality
-    if (meta.redirectUri && client.redirectUri !== meta.redirectUri) {
-        return {
-            error: ErrorCodes.unauthorized_client as ERROR_CODE,
-            error_description: ErrorDescriptions.invalid_redirect_uri,
-            error_hint: devMode
-                ? "redirectUri in the request is different than the found client's redirectUri. These two should match. In this version we do equality checks. basePath matching in future versions"
-                : null,
-        };
+    if (!client.redirect_uris.includes(meta.redirectUri)) {
+        throw new UnauthorizedClientError(
+            ERROR_DESCRIPTIONS.redirect_uri_mismatch,
+            "redirectUri in the request is different than the found client's redirectUri. These two should match. In this version we do equality checks. basePath matching in future versions",
+            true
+        );
     }
 
-    if (!meta.redirectUri && !client.redirectUri) {
-        return {
-            error: ErrorCodes.unauthorized_client as ERROR_CODE,
-            error_description: ErrorDescriptions.missing_redirect_uri,
-        };
-    }
-
-    if (meta.clientSecret && client.clientSecret !== meta.clientSecret) {
-        return {
-            error: ErrorCodes.unauthorized_client as ERROR_CODE,
-            error_description: ErrorDescriptions.invalid_client_secret,
-        };
+    if (meta.clientSecret && client.client_secret !== meta.clientSecret) {
+        throw new UnauthorizedClientError(ERROR_DESCRIPTIONS.invalid_client_secret, 'Invalid client secret');
     }
 };

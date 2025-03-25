@@ -3,53 +3,58 @@
     "author": "Attila Kling (attila.kling@gmail.com)",
     "version": "0.1.1",
     "license": "MIT",
-    "description": "OAuth 2.0 provider implementation for node.js",
+    "description": "OAuth 2.1 and OpenID-Connect provider implementation for node.js",
     "keywords": [
         "oauth2",
+        "oauth2.1",
+        "oidc",
+        "openid",
         "oauth provider",
-        "authorization"
+        "oidc provider",
+        "authorization",
+        "authz"
+    ],
+    "files": [
+        "dist",
+        "package.json",
+        "README.md",
+        "LICENSE"
     ],
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jim-y/auth-nz.git"
     },
     "homepage": "https://jim-y.github.io/auth-nz/",
-    "module": "dist/auth-nz.esm.js",
-    "main": "dist/index.js",
-    "typings": "dist/index.d.ts",
-    "files": [
-        "dist",
-        "src"
-    ],
-    "engines": {
-        "node": ">=10"
+    "exports": {
+        ".": "./dist/index.js",
+        "./plugins": "./dist/plugins/index.js"
     },
+    "types": "./dist/types/index.js",
+    "type": "module",
     "scripts": {
-        "start": "tsdx watch",
-        "build": "tsdx build",
-        "test": "tsdx test",
-        "lint": "tsdx lint",
-        "prepare": "tsdx build"
-    },
-    "husky": {
-        "hooks": {
-            "pre-commit": "tsdx lint"
-        }
+        "start": "node --experimental-strip-types src/index.ts",
+        "prebuild": "rimraf dist",
+        "build": "tsc --p tsconfig.build.json",
+        "prepublishOnly": "npm run build",
+        "preyalc": "npm run build",
+        "test": "node --test --experimental-strip-types"
     },
     "prettier": {
         "printWidth": 120,
         "tabWidth": 4,
         "semi": true,
         "singleQuote": true,
-        "trailingComma": "es5"
+        "trailingComma": "none"
     },
     "devDependencies": {
-        "husky": "^4.2.5",
-        "tsdx": "^0.14.1",
-        "tslib": "^2.4.1",
-        "typescript": "^4.9.4"
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.13.10",
+        "prettier": "^3.5.3",
+        "rimraf": "^6.0.1",
+        "typescript": "^5.8"
     },
     "dependencies": {
-        "basic-auth": "^2.0.1"
+        "cookie": "^1.0.2",
+        "jose": "^6.0.10"
     }
 }
